@@ -1,0 +1,9 @@
+.env
+checkpoints.db*
+checkpoints.sqlite
+server.log
+__pycache__/
+*.pyc
+venv/
+venv/
+/scratch/
