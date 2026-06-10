@@ -123,6 +123,39 @@ function getAuthToken() {
     return localStorage.getItem('crickait_token');
 }
 
+function getLocalDateString() {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+async function updateCreditsCounter() {
+    try {
+        const localDate = getLocalDateString();
+        const res = await authenticatedFetch(`${API_URL}/limits?local_date=${localDate}`);
+        if (res.ok) {
+            const data = await res.json();
+            const creditsEl = document.getElementById('header-credits-val');
+            const resetEl = document.getElementById('header-credits-reset-tip');
+            
+            if (!creditsEl || !resetEl) return;
+            
+            if (data.limit === null) {
+                creditsEl.textContent = 'Unlimited';
+                resetEl.style.display = 'none';
+            } else {
+                creditsEl.textContent = `${data.remaining} / ${data.limit}`;
+                resetEl.style.display = 'inline-block';
+            }
+        }
+    } catch (e) {
+        console.error("Error updating credits counter:", e);
+    }
+}
+
+
 async function authenticatedFetch(url, options = {}) {
     const token = getAuthToken();
     if (token) {
@@ -209,10 +242,26 @@ async function loadNewsTicker() {
 }
 
 async function loadLiveMatchesSidebar() {
+    const plan = localStorage.getItem('crickait_plan') || 'free';
+    const container = document.getElementById('live-matches-container');
+    if (!container) return;
+    
+    if (plan === 'guest') {
+        container.innerHTML = '<div style="font-size: 11px; color: var(--text-secondary); padding: 12px; text-align: center; border: 1px dashed var(--border-color); border-radius: 6px; margin: 4px;">Signup to access the live scoreboard</div>';
+        return;
+    }
+
     try {
         const res = await authenticatedFetch(`${API_URL}/live-scores`);
+        if (!res.ok) {
+            if (res.status === 403) {
+                container.innerHTML = '<div style="font-size: 11px; color: var(--text-secondary); padding: 12px; text-align: center; border: 1px dashed var(--border-color); border-radius: 6px; margin: 4px;">Signup to access the live scoreboard</div>';
+            } else {
+                container.innerHTML = '<div style="font-size: 11px; color: var(--text-secondary); padding: 6px;">No live matches</div>';
+            }
+            return;
+        }
         const data = await res.json();
-        const container = document.getElementById('live-matches-container');
         if (data.matches && data.matches.length > 0) {
             container.innerHTML = data.matches.map(m => {
                 const scoreHtml = (m.score || []).map(s => {
@@ -613,14 +662,30 @@ async function sendMessage() {
     scrollToBottom();
 
     try {
-        const res = await authenticatedFetch(`${API_URL}/ask?user_prompt=${encodeURIComponent(text)}&session_id=${currentSessionId}`, {
+        const localDate = getLocalDateString();
+        const res = await authenticatedFetch(`${API_URL}/ask?user_prompt=${encodeURIComponent(text)}&session_id=${currentSessionId}&local_date=${localDate}`, {
             method: 'POST'
         });
         const data = await res.json();
 
         loadingDiv.remove();
+
+        if (data.route === 'LIMIT_REACHED') {
+            const plan = localStorage.getItem('crickait_plan') || 'free';
+            if (plan === 'guest') {
+                await showCustomModal("Limit Reached", "Your guest limit of 20 messages is over. Please sign up to continue!", false);
+                showAuthOverlay();
+            } else {
+                await showCustomModal("Limit Reached", "Your daily limit of 100 messages is over. Please upgrade to Pro to continue!", false);
+                window.openModal('upgrade-modal');
+            }
+            updateCreditsCounter();
+            return;
+        }
+
         appendMessage('assistant', data.response);
         scrollToBottom();
+        updateCreditsCounter();
 
         // Wait for rename to finish so backend is updated before fetching list
         if (renamePromise) await renamePromise;
@@ -647,8 +712,14 @@ let scorecardData = null;
 let scorecardRefreshInterval = null;
 
 window.openScorecard = async (matchId) => {
+    const plan = localStorage.getItem('crickait_plan') || 'free';
     const overlay = document.getElementById('scorecard-overlay');
     overlay.style.display = 'flex';
+    if (plan === 'guest') {
+        document.getElementById('sc-match-name').textContent = 'Live Scoreboard Restricted';
+        document.getElementById('sc-innings-content').innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-secondary); font-size:15px; font-weight:500;">Signup to access the live scoreboard</div>';
+        return;
+    }
     document.getElementById('sc-innings-content').innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-secondary);"><div class="cricket-loader" style="justify-content:center; margin-bottom:12px;"><div class="cricket-loader-bouncer"><div class="cricket-loader-ball"></div></div><div class="cricket-loader-bouncer" style="animation-delay:0.15s"><div class="cricket-loader-ball"></div></div><div class="cricket-loader-bouncer" style="animation-delay:0.3s"><div class="cricket-loader-ball"></div></div></div>Loading scorecard...</div>';
 
     await fetchAndRenderScorecard(matchId);
@@ -1028,6 +1099,7 @@ window.updateUserProfileTrigger = async () => {
     // Check if token length suggests Google Login simulation or standard password simulation
     const isGoogle = !localStorage.getItem('crickait_username') || localStorage.getItem('crickait_token').length > 30;
     document.getElementById('profile-provider-val').textContent = isGoogle ? 'Google' : 'Local';
+    updateCreditsCounter();
 };
 
 // ===== SETTINGS POPOVER & DIALOG HANDLERS =====

@@ -45,7 +45,88 @@ REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 if not GROQ_API_KEY:
     raise RuntimeError("GROQ_API_KEY environment variable is not set")
 
-redis_client = AsyncRedis.from_url(REDIS_URL)
+class SmartRedisClient:
+    def __init__(self, redis_url: str):
+        self.redis = AsyncRedis.from_url(redis_url)
+        self.mock = None
+        self.use_mock = False
+
+    def _get_mock(self):
+        if not self.mock:
+            class MockRedis:
+                def __init__(self):
+                    self.data = {}
+                    self.expirations = {}
+                async def get(self, key: str):
+                    import time
+                    if key in self.expirations and self.expirations[key] < time.time():
+                        self.data.pop(key, None)
+                        self.expirations.pop(key, None)
+                    val = self.data.get(key)
+                    if val is None:
+                        return None
+                    return val if isinstance(val, bytes) else str(val).encode('utf-8')
+                async def set(self, key: str, value: str, ex: int = None):
+                    self.data[key] = value
+                    if ex:
+                        import time
+                        self.expirations[key] = time.time() + ex
+                async def incr(self, key: str):
+                    import time
+                    if key in self.expirations and self.expirations[key] < time.time():
+                        self.data.pop(key, None)
+                        self.expirations.pop(key, None)
+                    val = int(self.data.get(key, 0)) + 1
+                    self.data[key] = val
+                    return val
+                async def expire(self, key: str, seconds: int):
+                    import time
+                    self.expirations[key] = time.time() + seconds
+                    return 1
+            self.mock = MockRedis()
+        return self.mock
+
+    async def get(self, key: str):
+        if self.use_mock:
+            return await self._get_mock().get(key)
+        try:
+            return await self.redis.get(key)
+        except Exception as e:
+            logger.warning("Redis connection failed on get, falling back to mock: %s", e)
+            self.use_mock = True
+            return await self._get_mock().get(key)
+
+    async def set(self, key: str, value: str, ex: int = None):
+        if self.use_mock:
+            return await self._get_mock().set(key, value, ex)
+        try:
+            return await self.redis.set(key, value, ex=ex)
+        except Exception as e:
+            logger.warning("Redis connection failed on set, falling back to mock: %s", e)
+            self.use_mock = True
+            return await self._get_mock().set(key, value, ex)
+
+    async def incr(self, key: str):
+        if self.use_mock:
+            return await self._get_mock().incr(key)
+        try:
+            return await self.redis.incr(key)
+        except Exception as e:
+            logger.warning("Redis connection failed on incr, falling back to mock: %s", e)
+            self.use_mock = True
+            return await self._get_mock().incr(key)
+
+    async def expire(self, key: str, seconds: int):
+        if self.use_mock:
+            return await self._get_mock().expire(key, seconds)
+        try:
+            return await self.redis.expire(key, seconds)
+        except Exception as e:
+            logger.warning("Redis connection failed on expire, falling back to mock: %s", e)
+            self.use_mock = True
+            return await self._get_mock().expire(key, seconds)
+
+redis_client = SmartRedisClient(REDIS_URL)
 
 http_client: Optional[httpx.AsyncClient] = None
 
@@ -791,6 +872,13 @@ async def logout(request: Request):
 
 @app.get("/auth/me")
 async def get_me(username: str = Depends(get_current_user)):
+    if username.startswith('guest_'):
+        return {
+            "username": username,
+            "email": "guest@crickait.com",
+            "display_name": "Guest User",
+            "plan": "guest"
+        }
     try:
         async with aiosqlite.connect("checkpoints.db") as conn:
             async with conn.execute("SELECT username, email, display_name, plan FROM users WHERE username = ?", (username,)) as c:
@@ -808,6 +896,41 @@ async def get_me(username: str = Depends(get_current_user)):
     except Exception as e:
         logger.error("Failed to fetch user profile: %s", e)
         raise HTTPException(status_code=500, detail="Database error")
+
+
+@app.get("/limits")
+async def get_limits(local_date: Optional[str] = None, username: str = Depends(get_current_user)):
+    try:
+        if username.startswith('guest_'):
+            plan = 'guest'
+        else:
+            async with aiosqlite.connect("checkpoints.db") as conn:
+                async with conn.execute("SELECT plan FROM users WHERE username = ?", (username,)) as c:
+                    row = await c.fetchone()
+                    plan = row[0] if row else 'free'
+    except Exception:
+        plan = 'free'
+        
+    limit = 20 if plan == 'guest' else (100 if plan == 'free' else None)
+    
+    today = local_date if local_date else date.today().isoformat()
+    
+    if limit is not None:
+        daily_key = f"usage:{username}:{today}"
+        usage_val = await redis_client.get(daily_key)
+        usage = int(usage_val) if usage_val else 0
+        remaining = max(0, limit - usage)
+    else:
+        usage = 0
+        remaining = 999999
+        
+    return {
+        "plan": plan,
+        "usage": usage,
+        "limit": limit,
+        "remaining": remaining
+    }
+
 
 
 @app.delete("/auth/delete-account")
@@ -858,7 +981,7 @@ async def list_sessions(username: str = Depends(get_current_user)):
 
 
 @app.post("/ask")
-async def ask(user_prompt: str, session_id: Optional[str] = None, username: str = Depends(get_current_user)):
+async def ask(user_prompt: str, session_id: Optional[str] = None, local_date: Optional[str] = None, username: str = Depends(get_current_user)):
     sid = session_id or str(uuid.uuid4())
     scoped_sid = f"{username}:{sid}"
     
@@ -873,21 +996,21 @@ async def ask(user_prompt: str, session_id: Optional[str] = None, username: str 
             plan = 'guest'
                 
         if plan in ('free', 'guest'):
-            today = date.today().isoformat()
+            today = local_date if local_date else date.today().isoformat()
             daily_key = f"usage:{username}:{today}"
             usage = await redis_client.incr(daily_key)
             if usage == 1:
                 await redis_client.expire(daily_key, 86400)
             
-            if plan == 'guest' and usage > 5:
+            if plan == 'guest' and usage > 20:
                 return {
-                    "response": "You have reached your limit of 5 messages as a Guest. Please Sign Up to continue chatting!",
+                    "response": "You have reached your limit of 20 messages as a Guest. Please Sign Up to continue chatting!",
                     "session_id": sid,
                     "route": "LIMIT_REACHED"
                 }
-            elif plan == 'free' and usage > 10:
+            elif plan == 'free' and usage > 100:
                 return {
-                    "response": "You have reached your daily limit of 10 messages on the Free plan. Please upgrade to Pro in the settings menu!",
+                    "response": "You have reached your daily limit of 100 messages on the Free plan. Please upgrade to Pro in the settings menu!",
                     "session_id": sid,
                     "route": "LIMIT_REACHED"
                 }
@@ -998,7 +1121,12 @@ async def v2_fetch_scorecard_data_async(match_id: str):
 
 
 @app.get("/live-scores")
-async def get_scores():
+async def get_scores(username: str = Depends(get_current_user)):
+    if username.startswith('guest_'):
+        raise HTTPException(
+            status_code=403,
+            detail="Signup to access the live scoreboard"
+        )
     url = "https://www.cricbuzz.com/cricket-match/live-scores"
     client = get_http_client()
     try:
@@ -1106,8 +1234,13 @@ async def get_scores():
 
 
 @app.get("/scorecard/{match_id}")
-async def get_scorecard(match_id: str):
+async def get_scorecard(match_id: str, username: str = Depends(get_current_user)):
     """Fetches detailed scorecard for a specific match from Cricbuzz."""
+    if username.startswith('guest_'):
+        raise HTTPException(
+            status_code=403,
+            detail="Signup to access the live scoreboard"
+        )
     if not match_id.isdigit():
         raise HTTPException(status_code=400, detail="Invalid match ID format")
     try:
@@ -1362,3 +1495,18 @@ async def get_session_names(username: str = Depends(get_current_user)):
 
 
 # Static files removed for separate frontend deployments
+
+@app.get("/debug-groq")
+async def debug_groq():
+    try:
+        from langchain_core.messages import HumanMessage
+        res = await fast_router_llm.ainvoke([HumanMessage(content="Hello")])
+        return {"status": "ok", "response": res.content}
+    except Exception as e:
+        import traceback
+        return {
+            "status": "error",
+            "error_type": type(e).__name__,
+            "error_message": str(e),
+            "traceback": traceback.format_exc()
+        }
