@@ -7,10 +7,14 @@ import json
 import operator
 import re
 import bs4
+import hashlib
+import secrets
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from typing import Optional, Literal, Annotated
-from fastapi import FastAPI, HTTPException
+from datetime import datetime, date, timedelta
+from fastapi import FastAPI, HTTPException, Request, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from langchain_community.tools import DuckDuckGoSearchRun, WikipediaQueryRun
@@ -201,6 +205,22 @@ class AutoRenameRequest(BaseModel):
     user_prompt: str
 
 
+class RegisterRequest(BaseModel):
+    username: str
+    email: str
+    password: str
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class GoogleLoginRequest(BaseModel):
+    email: str
+    display_name: str
+
+
 structured_extractor = fast_router_llm.with_structured_output(
     UserProfileExtraction
 )
@@ -278,10 +298,16 @@ class AgentState(MessagesState):
     user_profile: Annotated[dict, operator.ior]
 
 
-async def profile_extractor_node(state: AgentState):
+async def profile_extractor_node(state: AgentState, config = None):
     """Runs silently to sync the Global Redis Profile with Local Chat State."""
     last_msg = state["messages"][-1]
-    global_data_str = await redis_client.get("global_user_profile")
+    
+    # Extract username from namespaced thread_id: "username:session_id"
+    thread_id = config.get("configurable", {}).get("thread_id", "") if config else ""
+    username = thread_id.split(":", 1)[0] if ":" in thread_id else "global"
+    redis_key = f"global_user_profile:{username}"
+
+    global_data_str = await redis_client.get(redis_key)
     global_profile = json.loads(global_data_str) if global_data_str else {}
 
     for key in ["favorite_players", "favorite_teams"]:
@@ -333,7 +359,7 @@ async def profile_extractor_node(state: AgentState):
 
         if data_changed:
             await redis_client.set(
-                "global_user_profile",
+                redis_key,
                 json.dumps(global_profile)
             )
 
@@ -465,7 +491,51 @@ workflow.add_conditional_edges("expert_node", route_after_expert)
 workflow.add_edge("tools", "expert_node")
 
 
-# 4. FASTAPI ENDPOINTS
+# 4. AUTH & USER HELPERS
+
+def hash_password(password: str) -> str:
+    salt = secrets.token_hex(16)
+    key = hashlib.pbkdf2_hmac(
+        'sha256',
+        password.encode('utf-8'),
+        salt.encode('utf-8'),
+        100000
+    )
+    return f"{salt}:{key.hex()}"
+
+
+def verify_password(stored_password: str, provided_password: str) -> bool:
+    try:
+        salt, key_hex = stored_password.split(':')
+        key = hashlib.pbkdf2_hmac(
+            'sha256',
+            provided_password.encode('utf-8'),
+            salt.encode('utf-8'),
+            100000
+        )
+        return key.hex() == key_hex
+    except Exception:
+        return False
+
+
+async def get_current_user(request: Request) -> str:
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(
+            status_code=401,
+            detail="Authentication token missing or invalid"
+        )
+    token = auth_header.split(" ")[1]
+    username_bytes = await redis_client.get(f"session:{token}")
+    if not username_bytes:
+        raise HTTPException(
+            status_code=401,
+            detail="Session expired or invalid"
+        )
+    return username_bytes.decode('utf-8')
+
+
+# 5. FASTAPI ENDPOINTS
 
 agent = None
 
@@ -475,6 +545,37 @@ async def lifespan(app: FastAPI):
     global agent
     # Initialize connection-pooled client
     get_http_client()
+
+    # Create users table in checkpoints.db
+    try:
+        async with aiosqlite.connect("checkpoints.db") as conn:
+            await conn.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                username TEXT PRIMARY KEY,
+                email TEXT UNIQUE,
+                password_hash TEXT,
+                auth_provider TEXT DEFAULT 'local',
+                display_name TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                plan TEXT DEFAULT 'free'
+            )
+            """)
+            # Try to add 'plan' column to existing table if it doesn't exist
+            try:
+                await conn.execute("ALTER TABLE users ADD COLUMN plan TEXT DEFAULT 'free'")
+            except Exception:
+                pass  # Column likely exists
+            
+            # Seed creator account
+            pwd_hash = hash_password('creatorspassword@118121')
+            await conn.execute(
+                "INSERT OR IGNORE INTO users (username, email, password_hash, auth_provider, display_name, plan) VALUES (?, ?, ?, 'local', ?, ?)",
+                ('iamthecreator', 'creator@crickait.com', pwd_hash, 'App Creator', 'pro')
+            )
+            await conn.commit()
+    except Exception as e:
+        logger.error("Failed to initialize users table: %s", e)
+
     async with AsyncSqliteSaver.from_conn_string("checkpoints.db") as checkpointer:
         await checkpointer.setup()
         agent = workflow.compile(checkpointer=checkpointer)
@@ -485,26 +586,315 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+# Setup CORS for separated frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-@app.get("/sessions")
-async def list_sessions():
+
+@app.post("/auth/register")
+async def register(request: RegisterRequest):
+    username = request.username.strip().lower()
+    email = request.email.strip().lower()
+    password = request.password
+
+    if not username or not email or not password:
+        raise HTTPException(
+            status_code=400,
+            detail="Username, email, and password are required"
+        )
+
+    if not re.match(r'^[a-zA-Z0-9\-_]+$', username):
+        raise HTTPException(
+            status_code=400,
+            detail="Username can only contain alphanumeric characters, hyphens, and underscores"
+        )
+
     try:
         async with aiosqlite.connect("checkpoints.db") as conn:
-            async with conn.execute("SELECT DISTINCT thread_id FROM checkpoints") as cursor:
+            if username == 'iamthecreator':
+                raise HTTPException(
+                    status_code=400,
+                    detail="Reserved username. Please login instead."
+                )
+
+            # Check if username exists
+            async with conn.execute("SELECT username FROM users WHERE username = ?", (username,)) as c:
+                if await c.fetchone():
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Username is already taken"
+                    )
+            # Check if email exists
+            async with conn.execute("SELECT email FROM users WHERE email = ?", (email,)) as c:
+                if await c.fetchone():
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Email is already registered"
+                    )
+
+            plan = 'pro' if username in ('admin', 'creator') or email in ('admin@crickait.com', 'creator@crickait.com') else 'free'
+            pwd_hash = hash_password(password)
+            await conn.execute(
+                "INSERT INTO users (username, email, password_hash, auth_provider, display_name, plan) VALUES (?, ?, ?, 'local', ?, ?)",
+                (username, email, pwd_hash, request.username, plan)
+            )
+            await conn.commit()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Registration database error: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail="Database error during registration"
+        )
+
+    # Generate token
+    token = uuid.uuid4().hex
+    await redis_client.setex(f"session:{token}", 86400, username)
+    return {
+        "token": token,
+        "username": username,
+        "display_name": request.username
+    }
+
+
+@app.post("/auth/guest")
+async def guest_login():
+    guest_uuid = uuid.uuid4().hex[:8]
+    username = f"guest_{guest_uuid}"
+    token = uuid.uuid4().hex
+    await redis_client.setex(f"session:{token}", 86400, username)
+    # Save guest profile explicitly
+    guest_profile = {
+        "favorite_players": [],
+        "favorite_teams": [],
+        "expertise_level": "Casual",
+        "preferred_format": ["T20"],
+        "rival_teams": []
+    }
+    await redis_client.setex(f"global_user_profile:{username}", 86400, json.dumps(guest_profile))
+    return {
+        "token": token,
+        "username": username,
+        "display_name": "Guest User"
+    }
+
+
+@app.post("/auth/login")
+async def login(request: LoginRequest):
+    username = request.username.strip().lower()
+    password = request.password
+
+    try:
+        async with aiosqlite.connect("checkpoints.db") as conn:
+            conn.row_factory = aiosqlite.Row
+            async with conn.execute("SELECT * FROM users WHERE username = ?", (username,)) as c:
+                row = await c.fetchone()
+                if not row:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Invalid username or password"
+                    )
+
+                if row["auth_provider"] != "local":
+                    raise HTTPException(
+                        status_code=400,
+                        detail="This account is registered via Google login"
+                    )
+
+                if not verify_password(row["password_hash"], password):
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Invalid username or password"
+                    )
+
+                display_name = row["display_name"] or row["username"]
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Login database error: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail="Database error during login"
+        )
+
+    token = uuid.uuid4().hex
+    await redis_client.setex(f"session:{token}", 86400, username)
+    return {"token": token, "username": username, "display_name": display_name}
+
+
+@app.post("/auth/google")
+async def google_login(request: GoogleLoginRequest):
+    email = request.email.strip().lower()
+    display_name = request.display_name.strip()
+
+    if not email:
+        raise HTTPException(status_code=400, detail="Email is required")
+
+    # Generate username from email
+    base_username = email.split("@")[0]
+    base_username = re.sub(r'[^a-zA-Z0-9\-_]', '', base_username)
+    if not base_username:
+        base_username = "google_user"
+
+    username = base_username
+    try:
+        async with aiosqlite.connect("checkpoints.db") as conn:
+            conn.row_factory = aiosqlite.Row
+            # Check if user already exists
+            async with conn.execute("SELECT * FROM users WHERE email = ?", (email,)) as c:
+                row = await c.fetchone()
+                if row:
+                    username = row["username"]
+                    display_name = row["display_name"] or display_name
+                else:
+                    # Resolve username conflicts
+                    counter = 1
+                    while True:
+                        async with conn.execute("SELECT username FROM users WHERE username = ?", (username,)) as uc:
+                            if not await uc.fetchone():
+                                break
+                            username = f"{base_username}_{counter}"
+                            counter += 1
+
+                    plan = 'pro' if username in ('admin', 'creator') or email in ('admin@crickait.com', 'creator@crickait.com') else 'free'
+                    await conn.execute(
+                        "INSERT INTO users (username, email, password_hash, auth_provider, display_name, plan) VALUES (?, ?, NULL, 'google', ?, ?)",
+                        (username, email, display_name, plan)
+                    )
+                    await conn.commit()
+    except Exception as e:
+        logger.error("Google login database error: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail="Database error during Google login"
+        )
+
+    token = uuid.uuid4().hex
+    await redis_client.setex(f"session:{token}", 86400, username)
+    return {"token": token, "username": username, "display_name": display_name}
+
+
+@app.post("/auth/logout")
+async def logout(request: Request):
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header.split(" ")[1]
+        await redis_client.delete(f"session:{token}")
+    return {"status": "success"}
+
+
+@app.get("/auth/me")
+async def get_me(username: str = Depends(get_current_user)):
+    try:
+        async with aiosqlite.connect("checkpoints.db") as conn:
+            async with conn.execute("SELECT username, email, display_name, plan FROM users WHERE username = ?", (username,)) as c:
+                row = await c.fetchone()
+                if row:
+                    return {
+                        "username": row[0],
+                        "email": row[1],
+                        "display_name": row[2],
+                        "plan": row[3]
+                    }
+                raise HTTPException(status_code=404, detail="User not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to fetch user profile: %s", e)
+        raise HTTPException(status_code=500, detail="Database error")
+
+
+@app.delete("/auth/delete-account")
+async def delete_account(username: str = Depends(get_current_user)):
+    try:
+        async with aiosqlite.connect("checkpoints.db") as conn:
+            # Delete user from users table
+            await conn.execute(
+                "DELETE FROM users WHERE username = ?",
+                (username,)
+            )
+
+            # Delete user's checkpoints (namespaced username:session_id)
+            pattern = f"{username}:%"
+            await conn.execute(
+                "DELETE FROM checkpoints WHERE thread_id LIKE ?",
+                (pattern,)
+            )
+            await conn.execute(
+                "DELETE FROM writes WHERE thread_id LIKE ?",
+                (pattern,)
+            )
+            await conn.commit()
+
+        # Clean Redis
+        await redis_client.delete(f"global_user_profile:{username}")
+        await redis_client.delete(f"chat_names:{username}")
+
+    except Exception as e:
+        logger.error("Failed to delete account: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to delete account")
+
+    return {"status": "success"}
+
+
+@app.get("/sessions")
+async def list_sessions(username: str = Depends(get_current_user)):
+    try:
+        async with aiosqlite.connect("checkpoints.db") as conn:
+            pattern = f"{username}:%"
+            async with conn.execute("SELECT DISTINCT thread_id FROM checkpoints WHERE thread_id LIKE ?", (pattern,)) as cursor:
                 rows = await cursor.fetchall()
-                return {"sessions": [row[0] for row in rows]}
+                sessions = [row[0].split(":", 1)[1] for row in rows if ":" in row[0]]
+                return {"sessions": sessions}
     except Exception as e:
         logger.error("Failed to list sessions from SQLite: %s", e, exc_info=True)
         return {"sessions": []}
 
 
 @app.post("/ask")
-async def ask(user_prompt: str, session_id: Optional[str] = None):
+async def ask(user_prompt: str, session_id: Optional[str] = None, username: str = Depends(get_current_user)):
     sid = session_id or str(uuid.uuid4())
+    scoped_sid = f"{username}:{sid}"
+    
     try:
+        async with aiosqlite.connect("checkpoints.db") as conn:
+            async with conn.execute("SELECT plan FROM users WHERE username = ?", (username,)) as c:
+                row = await c.fetchone()
+                plan = row[0] if row else 'free'
+                
+        # Guest accounts have 'guest_' prefix and circumvent the SQL user table
+        if username.startswith('guest_'):
+            plan = 'guest'
+                
+        if plan in ('free', 'guest'):
+            today = date.today().isoformat()
+            daily_key = f"usage:{username}:{today}"
+            usage = await redis_client.incr(daily_key)
+            if usage == 1:
+                await redis_client.expire(daily_key, 86400)
+            
+            if plan == 'guest' and usage > 5:
+                return {
+                    "response": "You have reached your limit of 5 messages as a Guest. Please Sign Up to continue chatting!",
+                    "session_id": sid,
+                    "route": "LIMIT_REACHED"
+                }
+            elif plan == 'free' and usage > 10:
+                return {
+                    "response": "You have reached your daily limit of 10 messages on the Free plan. Please upgrade to Pro in the settings menu!",
+                    "session_id": sid,
+                    "route": "LIMIT_REACHED"
+                }
+
         result = await agent.ainvoke(
             {"messages": [HumanMessage(content=user_prompt)]},
-            {"configurable": {"thread_id": sid}}
+            {"configurable": {"thread_id": scoped_sid}}
         )
         final_message = result["messages"][-1]
         route_used = result.get("route_decision", "SIMPLE")
@@ -527,9 +917,10 @@ async def ask(user_prompt: str, session_id: Optional[str] = None):
 
 
 @app.get("/history/{session_id}")
-async def get_history(session_id: str):
+async def get_history(session_id: str, username: str = Depends(get_current_user)):
     validate_session_id(session_id)
-    state = await agent.aget_state({"configurable": {"thread_id": session_id}})
+    scoped_sid = f"{username}:{session_id}"
+    state = await agent.aget_state({"configurable": {"thread_id": scoped_sid}})
     history = []
     if state and "messages" in state.values:
         for m in state.values["messages"]:
@@ -542,12 +933,13 @@ async def get_history(session_id: str):
 
 
 @app.delete("/clear/{session_id}")
-async def clear_history(session_id: str):
+async def clear_history(session_id: str, username: str = Depends(get_current_user)):
     validate_session_id(session_id)
+    scoped_sid = f"{username}:{session_id}"
     try:
         async with aiosqlite.connect("checkpoints.db") as conn:
-            await conn.execute("DELETE FROM checkpoints WHERE thread_id = ?", (session_id,))
-            await conn.execute("DELETE FROM writes WHERE thread_id = ?", (session_id,))
+            await conn.execute("DELETE FROM checkpoints WHERE thread_id = ?", (scoped_sid,))
+            await conn.execute("DELETE FROM writes WHERE thread_id = ?", (scoped_sid,))
             await conn.commit()
     except Exception as e:
         logger.error("Failed to clear history from SQLite: %s", e, exc_info=True)
@@ -556,9 +948,17 @@ async def clear_history(session_id: str):
 
 
 @app.get("/profile")
-async def get_profile():
-    global_data_str = await redis_client.get("global_user_profile")
+async def get_profile(username: str = Depends(get_current_user)):
+    global_data_str = await redis_client.get(f"global_user_profile:{username}")
     return json.loads(global_data_str) if global_data_str else {}
+
+
+@app.post("/profile")
+async def save_profile(profile_data: UserProfileExtraction, username: str = Depends(get_current_user)):
+    redis_key = f"global_user_profile:{username}"
+    data = profile_data.model_dump(exclude_none=True)
+    await redis_client.set(redis_key, json.dumps(data))
+    return {"status": "success", "profile": data}
 
 
 async def v2_fetch_scorecard_data_async(match_id: str):
@@ -872,16 +1272,17 @@ async def get_top_news(t: Optional[float] = None):
 
 
 @app.delete("/profile/clear")
-async def clear_profile():
-    await redis_client.delete("global_user_profile")
+async def clear_profile(username: str = Depends(get_current_user)):
+    await redis_client.delete(f"global_user_profile:{username}")
     return {"status": "cleared"}
 
 
 @app.delete("/profile/item")
-async def remove_profile_item(category: str, item: str):
+async def remove_profile_item(category: str, item: str, username: str = Depends(get_current_user)):
     if category not in ["favorite_players", "favorite_teams"]:
         raise HTTPException(status_code=400, detail="Invalid category")
-    global_data_str = await redis_client.get("global_user_profile")
+    redis_key = f"global_user_profile:{username}"
+    global_data_str = await redis_client.get(redis_key)
     if not global_data_str:
         return {"status": "empty"}
 
@@ -892,7 +1293,7 @@ async def remove_profile_item(category: str, item: str):
         if not profile[category]:
             del profile[category]
         await redis_client.set(
-            "global_user_profile",
+            redis_key,
             json.dumps(profile)
         )
 
@@ -900,8 +1301,8 @@ async def remove_profile_item(category: str, item: str):
 
 
 @app.post("/rename/{session_id}")
-async def rename_session(session_id: str, request: RenameRequest):
-    """Saves a custom name to Redis AND a local JSON file backup."""
+async def rename_session(session_id: str, request: RenameRequest, username: str = Depends(get_current_user)):
+    """Saves a custom name to Redis namespaced by username."""
     validate_session_id(session_id)
     clean_name = re.sub(r'<[^>]*>', '', request.new_name).strip()
     if not clean_name:
@@ -910,23 +1311,18 @@ async def rename_session(session_id: str, request: RenameRequest):
             detail="New name cannot be empty"
         )
 
-    names_data = await redis_client.get("chat_names")
+    redis_key = f"chat_names:{username}"
+    names_data = await redis_client.get(redis_key)
     names = json.loads(names_data) if names_data else {}
     names[session_id] = clean_name
-    await redis_client.set("chat_names", json.dumps(names))
-
-    try:
-        with open("chat_sessions.json", "w") as f:
-            json.dump(names, f, indent=4)
-    except Exception as e:
-        logger.error("Could not write backup to chat_sessions.json: %s", e)
+    await redis_client.set(redis_key, json.dumps(names))
 
     return {"status": "success", "new_name": clean_name}
 
 
 @app.post("/auto-rename/{session_id}")
-async def auto_rename_session(session_id: str, request: AutoRenameRequest):
-    """Uses LLM to generate a concise chat name based on first prompt."""
+async def auto_rename_session(session_id: str, request: AutoRenameRequest, username: str = Depends(get_current_user)):
+    """Uses LLM to generate a concise chat name based on first prompt and saves it namespaced by user."""
     validate_session_id(session_id)
     prompt = (
         f"Generate a very short, concise chat title (max 5 words) for a "
@@ -945,35 +1341,24 @@ async def auto_rename_session(session_id: str, request: AutoRenameRequest):
             else request.user_prompt
         )
 
-    names_data = await redis_client.get("chat_names")
+    redis_key = f"chat_names:{username}"
+    names_data = await redis_client.get(redis_key)
     names = json.loads(names_data) if names_data else {}
     names[session_id] = new_name
-    await redis_client.set("chat_names", json.dumps(names))
-
-    try:
-        with open("chat_sessions.json", "w") as f:
-            json.dump(names, f, indent=4)
-    except Exception:
-        pass
+    await redis_client.set(redis_key, json.dumps(names))
 
     return {"status": "success", "new_name": new_name}
 
 
 @app.get("/session-names")
-async def get_session_names():
-    """Retrieves all custom chat names."""
-    names_data = await redis_client.get("chat_names")
+async def get_session_names(username: str = Depends(get_current_user)):
+    """Retrieves all custom chat names for the current user."""
+    redis_key = f"chat_names:{username}"
+    names_data = await redis_client.get(redis_key)
     if names_data:
         return json.loads(names_data)
-
-    try:
-        if os.path.exists("chat_sessions.json"):
-            with open("chat_sessions.json", "r") as f:
-                return json.load(f)
-    except Exception:
-        pass
 
     return {}
 
 
-app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
+# Static files removed for separate frontend deployments

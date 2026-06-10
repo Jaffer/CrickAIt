@@ -8,8 +8,51 @@
     <link rel="icon" type="image/png" href="favicon.png">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
+    <!-- Sleek Auth Card Overlay -->
+    <div id="auth-overlay" class="auth-overlay">
+        <div class="auth-card">
+            <button class="close-auth" onclick="continueAsGuest()" aria-label="Continue as Guest">&times;</button>
+            <div class="auth-logo">
+                <img src="favicon.png" alt="CrickAIt Logo">
+            </div>
+            <h2 id="auth-title">Welcome to CrickAIt</h2>
+            <p id="auth-subtitle">Sign in to start chatting with your cricket companion</p>
+            
+            <form id="auth-form" onsubmit="handleAuthSubmit(event)">
+                <div class="input-group" id="username-group" style="display: none;">
+                    <label for="auth-username">Username</label>
+                    <input type="text" id="auth-username" placeholder="Type a username" autocomplete="username">
+                </div>
+                <div class="input-group">
+                    <label for="auth-email">Email / Username</label>
+                    <input type="text" id="auth-email" placeholder="Type your email or username" required autocomplete="email">
+                </div>
+                <div class="input-group">
+                    <label for="auth-password">Password</label>
+                    <input type="password" id="auth-password" placeholder="••••••••" required autocomplete="current-password">
+                </div>
+                
+                <button type="submit" class="auth-submit-btn" id="auth-submit-btn">Sign In</button>
+            </form>
+            
+            <div class="auth-divider">
+                <span>OR</span>
+            </div>
+            
+            <div id="google-btn-container" style="display: flex; justify-content: center; margin-bottom: 20px;"></div>
+            
+            <div class="auth-toggle">
+                <span id="auth-toggle-text">Don't have an account?</span>
+                <button onclick="toggleAuthMode()" id="auth-toggle-btn">Sign Up</button>
+            </div>
+        </div>
+    </div>
+
+
+
     <!-- Infinite News Scroller -->
     <div class="ticker-wrap" id="news-ticker-wrap">
         <div class="ticker-move" id="news-ticker-content">Loading latest news...</div>
@@ -47,6 +90,37 @@
                     <div id="profile-tags" class="profile-tags">
                         <!-- Profile tags injected here -->
                     </div>
+                </div>
+            </div>
+            
+            <!-- ChatGPT-style User Profile Trigger -->
+            <div class="user-profile-menu-container" id="user-profile-menu-container">
+                <div class="user-profile-trigger" id="user-profile-trigger">
+                    <div class="user-avatar" id="user-avatar">?</div>
+                    <div class="user-info-text">
+                        <div class="user-display-name" id="user-display-name">Loading...</div>
+                        <div class="user-role">Free Plan</div>
+                    </div>
+                    <button class="icon-btn" id="user-settings-btn"><i class="fa-solid fa-ellipsis-h"></i></button>
+                </div>
+                
+                <!-- Popover Menu -->
+                <div class="user-profile-popover" id="user-profile-popover" style="display: none;">
+                    <div class="popover-header">
+                        <div class="user-avatar" id="popover-user-avatar">?</div>
+                        <div class="popover-user-details">
+                            <div class="popover-display-name" id="popover-display-name">Loading...</div>
+                            <div class="popover-email" id="popover-email">loading...</div>
+                        </div>
+                    </div>
+                    <div class="popover-divider"></div>
+                    <button class="popover-item" id="menu-upgrade"><i class="fa-solid fa-wand-magic-sparkles"></i> Upgrade plan</button>
+                    <button class="popover-item" id="menu-personalization"><i class="fa-solid fa-sliders"></i> Personalization</button>
+                    <button class="popover-item" id="menu-profile"><i class="fa-solid fa-circle-user"></i> Profile</button>
+                    <button class="popover-item" id="menu-settings"><i class="fa-solid fa-gear"></i> Settings</button>
+                    <div class="popover-divider"></div>
+                    <button class="popover-item" id="menu-help"><i class="fa-solid fa-circle-question"></i> Help</button>
+                    <button class="popover-item logout" id="menu-logout"><i class="fa-solid fa-right-from-bracket"></i> Log out</button>
                 </div>
             </div>
         </nav>
@@ -157,6 +231,164 @@
         </div>
     </div>
 
+    <!-- Profile Modal -->
+    <div id="profile-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-circle-user"></i> My Profile</h3>
+                <button class="close-modal" onclick="closeModal('profile-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="profile-card">
+                    <div class="profile-avatar-large" id="profile-avatar-large">VA</div>
+                    <h2 id="profile-name-val">Guest User</h2>
+                    <p id="profile-email-val">guest@crickait.com</p>
+                    <div class="profile-meta-grid">
+                        <div class="meta-item">
+                            <span class="meta-label">Joined</span>
+                            <span class="meta-value" id="profile-joined-val">June 2026</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Provider</span>
+                            <span class="meta-value" id="profile-provider-val">Google</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Status</span>
+                            <span class="meta-value" id="profile-status-val">Free User</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upgrade Plan Modal -->
+    <div id="upgrade-modal" class="modal">
+        <div class="modal-content" style="max-width: 650px;">
+            <div class="modal-header">
+                <h3>Upgrade Your Plan</h3>
+                <button class="close-modal" onclick="closeModal('upgrade-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="upgrade-grid">
+                    <div class="upgrade-card current">
+                        <h4>Free Plan</h4>
+                        <div class="price">$0<span>/month</span></div>
+                        <p class="plan-desc">Standard access to cricket assistant.</p>
+                        <ul>
+                            <li><i class="fa-solid fa-check"></i> Standard response speeds</li>
+                            <li><i class="fa-solid fa-check"></i> 10 Messages / Day limit</li>
+                            <li><i class="fa-solid fa-check"></i> Llama-3.1 8B Model</li>
+                            <li><i class="fa-solid fa-check"></i> Live scores & news</li>
+                        </ul>
+                        <button class="btn-plan current" disabled>Current Plan</button>
+                    </div>
+                    <div class="upgrade-card pro">
+                        <div class="badge">POPULAR</div>
+                        <h4>CrickAIt Pro</h4>
+                        <div class="price">$15<span>/month</span></div>
+                        <p class="plan-desc">Unleash the full expert model power.</p>
+                        <ul>
+                            <li><i class="fa-solid fa-check"></i> Fast priority responses</li>
+                            <li><i class="fa-solid fa-check"></i> Llama-3.3 70B Expert Engine</li>
+                            <li><i class="fa-solid fa-check"></i> Deep match score analysis</li>
+                            <li><i class="fa-solid fa-check"></i> Unlimited questions</li>
+                        </ul>
+                        <button class="btn-plan upgrade" onclick="simulateUpgrade()">Upgrade Now</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Personalization Modal -->
+    <div id="personalization-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Personalization settings</h3>
+                <button class="close-modal" onclick="closeModal('personalization-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="personalization-form" onsubmit="savePersonalization(event)">
+                    <div class="input-group">
+                        <label for="expertise-level">Cricket Expertise Level</label>
+                        <select id="expertise-level">
+                            <option value="Casual">Casual Fan</option>
+                            <option value="Standard" selected>Standard</option>
+                            <option value="Expert">Expert Analyst</option>
+                            <option value="Tactician">Tactician</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Preferred Formats</label>
+                        <div class="checkbox-group">
+                            <label><input type="checkbox" value="T20" checked id="pref-t20"> T20</label>
+                            <label><input type="checkbox" value="ODI" checked id="pref-odi"> ODI</label>
+                            <label><input type="checkbox" value="Test" checked id="pref-test"> Test Match</label>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label for="rival-teams">Disliked Rival Teams (for banter)</label>
+                        <input type="text" id="rival-teams" placeholder="e.g. Australia, Mumbai Indians">
+                    </div>
+                    <button type="submit" class="auth-submit-btn">Save Preferences</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Settings</h3>
+                <button class="close-modal" onclick="closeModal('settings-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="settings-list">
+                    <div class="settings-item">
+                        <div class="item-text">
+                            <h4>Clear Favorites Profile</h4>
+                            <p>Reset all extracted favorite teams and players.</p>
+                        </div>
+                        <button class="btn-cancel" onclick="handleClearFavoritesProfile()">Reset</button>
+                    </div>
+                    <div class="settings-item divider"></div>
+                    <div class="settings-item">
+                        <div class="item-text">
+                            <h4 style="color: #ff4b4b;">Delete Account</h4>
+                            <p>Permanently remove your account, sessions, and data.</p>
+                        </div>
+                        <button class="btn-confirm" style="background-color: #ff4b4b;" onclick="handleDeleteAccount()">Delete</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div id="help-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Help & FAQ</h3>
+                <button class="close-modal" onclick="closeModal('help-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="help-section">
+                    <h4>What is CrickAIt?</h4>
+                    <p>CrickAIt is your AI-powered companion for cricket scores, news, trivia, and statistics. It automatically tracks your favorite teams/players based on your conversations.</p>
+                    
+                    <h4>How do I add favorite teams/players?</h4>
+                    <p>Simply chat with the assistant! E.g. say "I support India" or "I love Virat Kohli", and it will silently save them to your Global Profile.</p>
+                    
+                    <h4>How does Pro Plan work?</h4>
+                    <p>Pro Plan unlocks our 70B expert LLM engine, giving you highly detailed tactics, stats tables, and matches predictions.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.3/purify.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="script.js"></script>
 </body>

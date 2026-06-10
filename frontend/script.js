@@ -1,5 +1,145 @@
-const API_URL = window.location.origin; // Using relative path since it's served by FastAPI
+// Set to your actual backend URL in production
+const PROD_BACKEND_URL = 'http://localhost:8000'; 
+
+let API_URL = window.location.origin;
+if (window.location.protocol === 'file:' || window.location.origin === 'null') {
+    API_URL = '';
+} else if (window.location.port !== '8000' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    // If frontend is running on a separate local dev server (e.g. port 3000), point to backend on 8000
+    API_URL = 'http://localhost:8000';
+}
 let currentSessionId = null;
+
+// Mock API responses for file:// protocol testing
+if (window.location.protocol === 'file:') {
+    const originalFetch = window.fetch;
+    window.fetch = async function (url, options = {}) {
+        const urlStr = url.toString();
+        let responseData = {};
+        let status = 200;
+        
+        if (urlStr.includes('/auth/register') || urlStr.includes('/auth/login')) {
+            const body = options.body ? JSON.parse(options.body) : {};
+            responseData = {
+                token: 'mock_password_token_' + Date.now(),
+                username: body.username || 'testuser',
+                display_name: body.username || 'Test User'
+            };
+        } else if (urlStr.includes('/auth/google')) {
+            const body = options.body ? JSON.parse(options.body) : {};
+            responseData = {
+                token: 'mock_google_token_' + Date.now(),
+                username: body.email.split('@')[0],
+                display_name: body.display_name || 'Google User'
+            };
+        } else if (urlStr.includes('/auth/logout')) {
+            responseData = { status: 'success' };
+        } else if (urlStr.includes('/auth/delete-account')) {
+            responseData = { status: 'deleted' };
+        } else if (urlStr.includes('/sessions')) {
+            responseData = { sessions: ['session-1', 'session-2'] };
+        } else if (urlStr.includes('/session-names')) {
+            responseData = {
+                'session-1': 'IPL 2026 Analysis',
+                'session-2': 'Virat Kohli Stats'
+            };
+        } else if (urlStr.includes('/profile/clear')) {
+            responseData = { status: 'cleared' };
+        } else if (urlStr.includes('/profile/item')) {
+            responseData = { status: 'success' };
+        } else if (urlStr.includes('/profile')) {
+            if (options.method === 'POST') {
+                responseData = { status: 'success' };
+            } else {
+                responseData = {
+                    favorite_players: ['Virat Kohli', 'MS Dhoni'],
+                    favorite_teams: ['India', 'RCB'],
+                    expertise_level: 'Intermediate',
+                    preferred_format: ['T20', 'ODI'],
+                    rival_teams: ['Australia']
+                };
+            }
+        } else if (urlStr.includes('/rename/')) {
+            responseData = { status: 'success' };
+        } else if (urlStr.includes('/clear/')) {
+            responseData = { status: 'success' };
+        } else if (urlStr.includes('/history/')) {
+            responseData = {
+                messages: [
+                    { role: 'user', content: 'Hi' },
+                    { role: 'assistant', content: 'Hello! I am your cricket assistant CrickAIt. How can I help you today?' }
+                ]
+            };
+        } else if (urlStr.includes('/ask')) {
+            responseData = { response: 'This is a mock assistant response in file:// preview mode.' };
+        } else if (urlStr.includes('/auto-rename/')) {
+            responseData = { status: 'success', new_name: 'Mock Renamed Chat' };
+        } else if (urlStr.includes('/top-news')) {
+            responseData = { news: 'Mock News Ticker | Ind vs Pak match scheduled | Kohli scores 100' };
+        } else if (urlStr.includes('/live-scores')) {
+            responseData = {
+                matches: [{
+                    id: 'match-1',
+                    name: 'India vs Pakistan',
+                    status: 'Ind won by 6 wickets',
+                    score: [
+                        { inning: 'PAK', r: '152', w: '10', o: '20.0' },
+                        { inning: 'IND', r: '153', w: '4', o: '17.4' }
+                    ],
+                    teamInfo: [
+                        { name: 'India', shortname: 'IND', img: 'https://g.cricket/ind.png' },
+                        { name: 'Pakistan', shortname: 'PAK', img: 'https://g.cricket/pak.png' }
+                    ]
+                }]
+            };
+        } else if (urlStr.includes('/scorecard/')) {
+            responseData = {
+                name: 'India vs Pakistan',
+                teamInfo: [
+                    { name: 'India', shortname: 'IND' },
+                    { name: 'Pakistan', shortname: 'PAK' }
+                ],
+                innings: []
+            };
+        } else {
+            return originalFetch(url, options);
+        }
+        
+        return {
+            ok: status >= 200 && status < 300,
+            status: status,
+            json: async () => responseData,
+            text: async () => JSON.stringify(responseData)
+        };
+    };
+}
+
+
+// Auth helper
+function getAuthToken() {
+    return localStorage.getItem('crickait_token');
+}
+
+async function authenticatedFetch(url, options = {}) {
+    const token = getAuthToken();
+    if (token) {
+        options.headers = {
+            ...options.headers,
+            'Authorization': `Bearer ${token}`
+        };
+    }
+    
+    const res = await fetch(url, options);
+    
+    if (res.status === 401) {
+        localStorage.removeItem('crickait_token');
+        localStorage.removeItem('crickait_username');
+        localStorage.removeItem('crickait_display_name');
+        showAuthOverlay();
+    }
+    
+    return res;
+}
 
 // DOM Elements
 const sidebar = document.getElementById('sidebar');
@@ -16,12 +156,34 @@ const welcomeScreen = document.getElementById('welcome-screen');
 const currentChatTitle = document.getElementById('current-chat-title');
 
 // Initialize
-document.addEventListener('DOMContentLoaded', () => {
+window.onload = function () {
     initApp();
     setupEventListeners();
-});
+    
+    // Initialize Google Sign-in
+    if (window.google) {
+        google.accounts.id.initialize({
+            client_id: "895472652408-9tp4qlkqnpb6ufvo61ipsoaet2d0lmai.apps.googleusercontent.com",
+            callback: window.handleGoogleCredentialResponse
+        });
+        const btnContainer = document.getElementById("google-btn-container");
+        if (btnContainer) {
+            google.accounts.id.renderButton(
+                btnContainer,
+                { theme: "outline", size: "large", width: 360, shape: "rectangular" }
+            );
+        }
+    }
+};
 
 async function initApp() {
+    const token = getAuthToken();
+    if (!token) {
+        showAuthOverlay();
+        return;
+    }
+    hideAuthOverlay();
+    await window.updateUserProfileTrigger();
     await loadSessions();
     await loadProfile();
     loadNewsTicker();
@@ -30,7 +192,7 @@ async function initApp() {
 
 async function loadNewsTicker() {
     try {
-        const res = await fetch(`${API_URL}/top-news`);
+        const res = await authenticatedFetch(`${API_URL}/top-news`);
         const data = await res.json();
         const contentDiv = document.getElementById('news-ticker-content');
         if (data.news) {
@@ -45,7 +207,7 @@ async function loadNewsTicker() {
 
 async function loadLiveMatchesSidebar() {
     try {
-        const res = await fetch(`${API_URL}/live-scores`);
+        const res = await authenticatedFetch(`${API_URL}/live-scores`);
         const data = await res.json();
         const container = document.getElementById('live-matches-container');
         if (data.matches && data.matches.length > 0) {
@@ -117,7 +279,8 @@ function setupEventListeners() {
             sendMessage();
         });
     });
-
+    // Profile settings popover and modal events
+    setupProfilePopover();
 }
 
 // UUID generator for new sessions
@@ -146,8 +309,8 @@ function startNewChat() {
 async function loadSessions() {
     try {
         const [sessionsRes, namesRes] = await Promise.all([
-            fetch(`${API_URL}/sessions`),
-            fetch(`${API_URL}/session-names`)
+            authenticatedFetch(`${API_URL}/sessions`),
+            authenticatedFetch(`${API_URL}/session-names`)
         ]);
         
         const sessionsData = await sessionsRes.json();
@@ -271,7 +434,7 @@ window.editSessionName = async (sid, oldName, event) => {
     const newName = await showCustomModal("Rename Chat", "Enter new name for this chat:", true, oldName);
     if (newName && newName.trim() !== "" && newName !== oldName) {
         try {
-            await fetch(`${API_URL}/rename/${sid}`, {
+            await authenticatedFetch(`${API_URL}/rename/${sid}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ new_name: newName.trim() })
@@ -292,7 +455,7 @@ window.deleteSession = async (sid, event) => {
     const confirmed = await showCustomModal("Delete Chat", "Are you sure you want to delete this chat?", false);
     if(confirmed) {
         try {
-            await fetch(`${API_URL}/clear/${sid}`, { method: 'DELETE' });
+            await authenticatedFetch(`${API_URL}/clear/${sid}`, { method: 'DELETE' });
             if (currentSessionId === sid) {
                 currentSessionId = null;
             }
@@ -314,7 +477,7 @@ async function loadChatHistory(sid, name) {
     if (window.innerWidth <= 768) sidebar.classList.add('closed');
     
     try {
-        const res = await fetch(`${API_URL}/history/${sid}`);
+        const res = await authenticatedFetch(`${API_URL}/history/${sid}`);
         const data = await res.json();
         
         const messages = data.messages || [];
@@ -335,7 +498,7 @@ async function loadChatHistory(sid, name) {
 
 async function loadProfile() {
     try {
-        const res = await fetch(`${API_URL}/profile`);
+        const res = await authenticatedFetch(`${API_URL}/profile`);
         const profile = await res.json();
         
         profileTags.innerHTML = '';
@@ -370,7 +533,7 @@ async function loadProfile() {
 
 window.deleteProfileItem = async (category, item) => {
     try {
-        await fetch(`${API_URL}/profile/item?category=${category}&item=${item}`, { method: 'DELETE' });
+        await authenticatedFetch(`${API_URL}/profile/item?category=${category}&item=${item}`, { method: 'DELETE' });
         loadProfile();
     } catch (e) { console.error(e); }
 }
@@ -381,7 +544,7 @@ function appendMessage(role, content) {
     msgDiv.className = `message ${role}`;
     
     // Parse markdown for bot messages
-    let formattedContent = isUser ? content : marked.parse(content);
+    let formattedContent = isUser ? content : DOMPurify.sanitize(marked.parse(content));
     
     msgDiv.innerHTML = `
         <div class="message-avatar">${isUser ? '👤' : '🏏'}</div>
@@ -421,7 +584,7 @@ async function sendMessage() {
     let renamePromise = null;
     if (isFirstMessage) {
         currentChatTitle.textContent = "Generating title...";
-        renamePromise = fetch(`${API_URL}/auto-rename/${currentSessionId}`, {
+        renamePromise = authenticatedFetch(`${API_URL}/auto-rename/${currentSessionId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_prompt: text })
@@ -447,7 +610,7 @@ async function sendMessage() {
     scrollToBottom();
     
     try {
-        const res = await fetch(`${API_URL}/ask?user_prompt=${encodeURIComponent(text)}&session_id=${currentSessionId}`, {
+        const res = await authenticatedFetch(`${API_URL}/ask?user_prompt=${encodeURIComponent(text)}&session_id=${currentSessionId}`, {
             method: 'POST'
         });
         const data = await res.json();
@@ -494,7 +657,7 @@ window.openScorecard = async (matchId) => {
 
 async function fetchAndRenderScorecard(matchId) {
     try {
-        const res = await fetch(`${API_URL}/scorecard/${matchId}`);
+        const res = await authenticatedFetch(`${API_URL}/scorecard/${matchId}`);
         scorecardData = await res.json();
         if (scorecardData.error) {
             document.getElementById('sc-innings-content').innerHTML = `<div style="text-align:center; padding:40px; color:#ff4b4b;">${scorecardData.error}</div>`;
@@ -652,4 +815,390 @@ window.closeScorecardOverlay = () => {
         clearInterval(scorecardRefreshInterval);
         scorecardRefreshInterval = null;
     }
+};
+
+// ===== AUTHENTICATION STATE & LOGIC =====
+let authMode = 'login'; // 'login' or 'signup'
+
+window.showAuthOverlay = () => {
+    document.getElementById('auth-overlay').style.display = 'flex';
+};
+
+window.hideAuthOverlay = () => {
+    document.getElementById('auth-overlay').style.display = 'none';
+};
+
+window.toggleAuthMode = () => {
+    const usernameGroup = document.getElementById('username-group');
+    const authTitle = document.getElementById('auth-title');
+    const authSubtitle = document.getElementById('auth-subtitle');
+    const authSubmitBtn = document.getElementById('auth-submit-btn');
+    const authToggleBtn = document.getElementById('auth-toggle-btn');
+    const authToggleText = document.getElementById('auth-toggle-text');
+    const usernameInput = document.getElementById('auth-username');
+    const emailInput = document.getElementById('auth-email');
+
+    if (authMode === 'login') {
+        authMode = 'signup';
+        usernameGroup.style.display = 'block';
+        usernameInput.setAttribute('required', 'true');
+        emailInput.placeholder = 'Type your email';
+        authTitle.textContent = 'Create an Account';
+        authSubtitle.textContent = 'Join CrickAIt to access your cricket assistant';
+        authSubmitBtn.textContent = 'Sign Up';
+        authToggleText.textContent = 'Already have an account?';
+        authToggleBtn.textContent = 'Sign In';
+    } else {
+        authMode = 'login';
+        usernameGroup.style.display = 'none';
+        usernameInput.removeAttribute('required');
+        emailInput.placeholder = 'Type your email or username';
+        authTitle.textContent = 'Welcome to CrickAIt';
+        authSubtitle.textContent = 'Sign in to start chatting with your cricket companion';
+        authSubmitBtn.textContent = 'Sign In';
+        authToggleText.textContent = "Don't have an account?";
+        authToggleBtn.textContent = 'Sign Up';
+    }
+};
+
+window.continueAsGuest = async () => {
+    try {
+        const res = await fetch(`${API_URL}/auth/guest`, { method: 'POST' });
+        if (res.ok) {
+            const data = await res.json();
+            localStorage.setItem('crickait_token', data.token);
+            localStorage.setItem('crickait_username', data.username);
+            localStorage.setItem('crickait_display_name', data.display_name);
+            localStorage.setItem('crickait_plan', 'guest');
+            window.hideAuthOverlay();
+            await window.updateUserProfileTrigger();
+            await initApp();
+        } else {
+            alert('Guest login failed. Please try again.');
+        }
+    } catch (e) {
+        console.error(e);
+        alert('Network error during guest login.');
+    }
+};
+
+window.handleAuthSubmit = async (event) => {
+    event.preventDefault();
+    const username = document.getElementById('auth-username').value.trim();
+    const emailOrUser = document.getElementById('auth-email').value.trim();
+    const password = document.getElementById('auth-password').value;
+
+    const submitBtn = document.getElementById('auth-submit-btn');
+    submitBtn.disabled = true;
+    submitBtn.textContent = authMode === 'login' ? 'Signing In...' : 'Signing Up...';
+
+    try {
+        let endpoint = authMode === 'login' ? '/auth/login' : '/auth/register';
+        let body = {};
+        if (authMode === 'login') {
+            body = { username: emailOrUser, password: password };
+        } else {
+            body = { username: username, email: emailOrUser, password: password };
+        }
+
+        const res = await fetch(`${API_URL}${endpoint}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+            alert(data.detail || 'Authentication failed');
+            return;
+        }
+
+        localStorage.setItem('crickait_token', data.token);
+        localStorage.setItem('crickait_username', data.username);
+        localStorage.setItem('crickait_display_name', data.display_name);
+
+        window.hideAuthOverlay();
+        window.updateUserProfileTrigger();
+        await initApp();
+    } catch (e) {
+        console.error(e);
+        alert('Connection error occurred');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = authMode === 'login' ? 'Sign In' : 'Sign Up';
+    }
+};
+
+window.handleGoogleCredentialResponse = async (response) => {
+    try {
+        // Decode JWT payload locally to get email and name
+        const payloadBase64Url = response.credential.split('.')[1];
+        const payloadBase64 = payloadBase64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const payloadJson = decodeURIComponent(atob(payloadBase64).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        const payload = JSON.parse(payloadJson);
+        
+        const res = await fetch(`${API_URL}/auth/google`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                email: payload.email, 
+                display_name: payload.name || payload.email.split('@')[0] 
+            })
+        });
+        
+        const data = await res.json();
+        if (!res.ok) {
+            alert(data.detail || 'Google sign-in failed');
+            return;
+        }
+        localStorage.setItem('crickait_token', data.token);
+        localStorage.setItem('crickait_username', data.username);
+        localStorage.setItem('crickait_display_name', data.display_name);
+
+        window.hideAuthOverlay();
+        await window.updateUserProfileTrigger();
+        await initApp();
+    } catch (e) {
+        console.error("Google Sign-In Error", e);
+        alert('Google Sign-in failed due to network error');
+    }
+};
+
+window.updateUserProfileTrigger = async () => {
+    // Try to fetch profile from backend
+    try {
+        const res = await authenticatedFetch(`${API_URL}/auth/me`);
+        if (res.ok) {
+            const data = await res.json();
+            localStorage.setItem('crickait_username', data.username);
+            localStorage.setItem('crickait_display_name', data.display_name);
+            localStorage.setItem('crickait_plan', data.plan);
+            localStorage.setItem('crickait_email', data.email);
+        }
+    } catch(e) {
+        console.error("Failed to fetch user profile", e);
+    }
+
+    const displayName = localStorage.getItem('crickait_display_name') || 'Guest User';
+    const email = localStorage.getItem('crickait_email') || (localStorage.getItem('crickait_username') ? `${localStorage.getItem('crickait_username')}@crickait.com` : 'guest@crickait.com');
+    const plan = localStorage.getItem('crickait_plan') || 'free';
+    const initials = displayName.substring(0, 2).toUpperCase();
+
+    document.getElementById('user-avatar').textContent = initials;
+    document.getElementById('user-display-name').textContent = displayName;
+    document.getElementById('popover-user-avatar').textContent = initials;
+    document.getElementById('popover-display-name').textContent = displayName;
+    document.getElementById('popover-email').textContent = email;
+    
+    // Update role display
+    let roleText = 'Free Plan';
+    if (plan === 'pro') roleText = 'Pro Plan';
+    if (plan === 'guest') roleText = 'Guest User';
+    const roleEls = document.querySelectorAll('.user-role');
+    roleEls.forEach(el => el.textContent = roleText);
+    
+    // Update popover for guests
+    const logoutBtn = document.getElementById('menu-logout');
+    if (plan === 'guest') {
+        logoutBtn.innerHTML = '<i class="fa-solid fa-user-plus"></i> Sign Up / Sign In';
+        logoutBtn.classList.remove('logout');
+        document.getElementById('menu-upgrade').style.display = 'none';
+        document.getElementById('menu-personalization').style.display = 'none';
+        document.getElementById('menu-profile').style.display = 'none';
+        document.getElementById('menu-settings').style.display = 'none';
+    } else {
+        logoutBtn.innerHTML = '<i class="fa-solid fa-right-from-bracket"></i> Log out';
+        logoutBtn.classList.add('logout');
+        document.getElementById('menu-upgrade').style.display = 'block';
+        document.getElementById('menu-personalization').style.display = 'block';
+        document.getElementById('menu-profile').style.display = 'block';
+        document.getElementById('menu-settings').style.display = 'block';
+    }
+    
+    // Update profile modal
+    document.getElementById('profile-avatar-large').textContent = initials;
+    document.getElementById('profile-name-val').textContent = displayName;
+    document.getElementById('profile-email-val').textContent = email;
+    
+    // Check if token length suggests Google Login simulation or standard password simulation
+    const isGoogle = !localStorage.getItem('crickait_username') || localStorage.getItem('crickait_token').length > 30;
+    document.getElementById('profile-provider-val').textContent = isGoogle ? 'Google' : 'Local';
+};
+
+// ===== SETTINGS POPOVER & DIALOG HANDLERS =====
+function setupProfilePopover() {
+    const trigger = document.getElementById('user-profile-trigger');
+    const popover = document.getElementById('user-profile-popover');
+    
+    trigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isHidden = popover.style.display === 'none';
+        popover.style.display = isHidden ? 'block' : 'none';
+    });
+
+    document.addEventListener('click', () => {
+        popover.style.display = 'none';
+    });
+
+    popover.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
+
+    // Menu items
+    document.getElementById('menu-upgrade').addEventListener('click', () => {
+        popover.style.display = 'none';
+        window.openModal('upgrade-modal');
+    });
+
+    document.getElementById('menu-personalization').addEventListener('click', () => {
+        popover.style.display = 'none';
+        window.loadPersonalizationData();
+        window.openModal('personalization-modal');
+    });
+
+    document.getElementById('menu-profile').addEventListener('click', () => {
+        popover.style.display = 'none';
+        window.openModal('profile-modal');
+    });
+
+    document.getElementById('menu-settings').addEventListener('click', () => {
+        popover.style.display = 'none';
+        window.openModal('settings-modal');
+    });
+
+    document.getElementById('menu-help').addEventListener('click', () => {
+        popover.style.display = 'none';
+        window.openModal('help-modal');
+    });
+
+    document.getElementById('menu-logout').addEventListener('click', async () => {
+        popover.style.display = 'none';
+        await handleLogout();
+    });
+}
+
+window.openModal = (modalId) => {
+    document.getElementById(modalId).classList.add('show');
+};
+
+window.closeModal = (modalId) => {
+    document.getElementById(modalId).classList.remove('show');
+};
+
+async function handleLogout() {
+    try {
+        await authenticatedFetch(`${API_URL}/auth/logout`, { method: 'POST' });
+    } catch(e) {
+        console.error(e);
+    }
+    localStorage.removeItem('crickait_token');
+    localStorage.removeItem('crickait_username');
+    localStorage.removeItem('crickait_display_name');
+    localStorage.removeItem('crickait_plan');
+    localStorage.removeItem('crickait_email');
+    location.reload();
+}
+
+window.handleDeleteAccount = async () => {
+    if (confirm("Are you absolutely sure you want to delete your account? This will permanently erase all your chat history and preferences. This action cannot be undone.")) {
+        try {
+            const res = await authenticatedFetch(`${API_URL}/auth/delete-account`, { method: 'DELETE' });
+            if (res.ok) {
+                alert("Your account has been successfully deleted.");
+                localStorage.removeItem('crickait_token');
+                localStorage.removeItem('crickait_username');
+                localStorage.removeItem('crickait_display_name');
+                location.reload();
+            } else {
+                alert("Failed to delete account.");
+            }
+        } catch(e) {
+            console.error(e);
+            alert("Error deleting account.");
+        }
+    }
+};
+
+window.handleClearFavoritesProfile = async () => {
+    if (confirm("Reset your extracted cricket profile favorites?")) {
+        try {
+            const res = await authenticatedFetch(`${API_URL}/profile/clear`, { method: 'DELETE' });
+            if (res.ok) {
+                alert("Profile reset successfully.");
+                window.closeModal('settings-modal');
+                await loadProfile();
+            }
+        } catch(e) {
+            console.error(e);
+        }
+    }
+};
+
+window.loadPersonalizationData = async () => {
+    try {
+        const res = await authenticatedFetch(`${API_URL}/profile`);
+        const profile = await res.json();
+        
+        if (profile.expertise_level) {
+            document.getElementById('expertise-level').value = profile.expertise_level;
+        }
+        if (profile.preferred_format) {
+            document.getElementById('pref-t20').checked = profile.preferred_format.includes('T20');
+            document.getElementById('pref-odi').checked = profile.preferred_format.includes('ODI');
+            document.getElementById('pref-test').checked = profile.preferred_format.includes('Test');
+        }
+        if (profile.rival_teams) {
+            document.getElementById('rival-teams').value = profile.rival_teams.join(', ');
+        }
+    } catch(e) {
+        console.error(e);
+    }
+};
+
+window.savePersonalization = async (event) => {
+    event.preventDefault();
+    const expertise = document.getElementById('expertise-level').value;
+    const formats = [];
+    if (document.getElementById('pref-t20').checked) formats.push('T20');
+    if (document.getElementById('pref-odi').checked) formats.push('ODI');
+    if (document.getElementById('pref-test').checked) formats.push('Test');
+    
+    const rivalInput = document.getElementById('rival-teams').value;
+    const rivals = rivalInput ? rivalInput.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+    try {
+        const res = await authenticatedFetch(`${API_URL}/profile`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                expertise_level: expertise,
+                preferred_format: formats,
+                rival_teams: rivals
+            })
+        });
+        if (res.ok) {
+            alert("Preferences saved successfully!");
+            window.closeModal('personalization-modal');
+            await loadProfile();
+        } else {
+            alert("Failed to save preferences.");
+        }
+    } catch(e) {
+        console.error(e);
+        alert("Error saving preferences.");
+    }
+};
+
+window.simulateUpgrade = () => {
+    alert("Congratulations! You have been upgraded to CrickAIt Pro Plan (Simulated).");
+    window.closeModal('upgrade-modal');
+    
+    // Update local role display text
+    document.querySelectorAll('.user-role').forEach(el => {
+        el.textContent = "Pro Plan";
+    });
+    const statusVal = document.getElementById('profile-status-val');
+    if (statusVal) statusVal.textContent = "Pro User";
 };
