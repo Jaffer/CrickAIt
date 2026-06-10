@@ -8,6 +8,7 @@ langchain
 langchain-groq
 langchain-community
 langgraph
+langgraph-checkpoint-sqlite
 httpx
 beautifulsoup4
 python-dotenv
