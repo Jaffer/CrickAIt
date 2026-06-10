@@ -13,6 +13,48 @@ if (window.location.protocol === 'file:' || window.location.origin === 'null') {
 }
 let currentSessionId = null;
 
+function getBrowserFingerprint() {
+    try {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.textBaseline = "top";
+        ctx.font = "14px 'Arial'";
+        ctx.textBaseline = "alphabetic";
+        ctx.fillStyle = "#f60";
+        ctx.fillRect(125,1,62,20);
+        ctx.fillStyle = "#069";
+        ctx.fillText("CrickAIt Fingerprint", 2, 15);
+        ctx.fillStyle = "rgba(102, 204, 0, 0.7)";
+        ctx.fillText("CrickAIt Fingerprint", 4, 17);
+        const canvasData = canvas.toDataURL();
+        
+        let hash = 0;
+        const inputs = [
+            canvasData,
+            navigator.userAgent,
+            navigator.language,
+            screen.colorDepth,
+            screen.width + 'x' + screen.height,
+            new Date().getTimezoneOffset()
+        ].join('###');
+        
+        for (let i = 0; i < inputs.length; i++) {
+            const char = inputs.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash |= 0;
+        }
+        return 'dev_' + Math.abs(hash).toString(16);
+    } catch (e) {
+        // Fallback to random if canvas/fingerprinting fails
+        let fallbackId = localStorage.getItem('crickait_fallback_device_id');
+        if (!fallbackId) {
+            fallbackId = 'dev_fallback_' + Math.random().toString(36).substring(2, 15);
+            localStorage.setItem('crickait_fallback_device_id', fallbackId);
+        }
+        return fallbackId;
+    }
+}
+
 // Mock API responses for file:// protocol testing
 if (window.location.protocol === 'file:') {
     const originalFetch = window.fetch;
@@ -937,7 +979,12 @@ window.toggleAuthMode = () => {
 
 window.continueAsGuest = async () => {
     try {
-        const res = await fetch(`${API_URL}/auth/guest`, { method: 'POST' });
+        const deviceId = getBrowserFingerprint();
+        const res = await fetch(`${API_URL}/auth/guest`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ device_id: deviceId })
+        });
         if (res.ok) {
             const data = await res.json();
             localStorage.setItem('crickait_token', data.token);
@@ -965,6 +1012,21 @@ window.handleAuthSubmit = async (event) => {
     const submitBtn = document.getElementById('auth-submit-btn');
     submitBtn.disabled = true;
     submitBtn.textContent = authMode === 'login' ? 'Signing In...' : 'Signing Up...';
+
+    if (authMode === 'signup') {
+        if (password.length < 6) {
+            alert('Password must be at least 6 characters long.');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Sign Up';
+            return;
+        }
+        if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+            alert('Password must contain at least one letter and one number.');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Sign Up';
+            return;
+        }
+    }
 
     try {
         let endpoint = authMode === 'login' ? '/auth/login' : '/auth/register';

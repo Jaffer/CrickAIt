@@ -286,6 +286,10 @@ class AutoRenameRequest(BaseModel):
     user_prompt: str
 
 
+class GuestLoginRequest(BaseModel):
+    device_id: str
+
+
 class RegisterRequest(BaseModel):
     username: str
     email: str
@@ -695,6 +699,17 @@ async def register(request: RegisterRequest):
             detail="Username can only contain alphanumeric characters, hyphens, and underscores"
         )
 
+    if len(password) < 6:
+        raise HTTPException(
+            status_code=400,
+            detail="Password must be at least 6 characters long"
+        )
+    if not any(c.isalpha() for c in password) or not any(c.isdigit() for c in password):
+        raise HTTPException(
+            status_code=400,
+            detail="Password must contain at least one letter and one number"
+        )
+
     try:
         async with aiosqlite.connect("checkpoints.db") as conn:
             if username == 'iamthecreator':
@@ -725,6 +740,18 @@ async def register(request: RegisterRequest):
                 (username, email, pwd_hash, request.username, plan)
             )
             await conn.commit()
+
+            # Save persistent backup to Redis
+            redis_user = {
+                "username": username,
+                "email": email,
+                "password_hash": pwd_hash,
+                "auth_provider": "local",
+                "display_name": request.username,
+                "plan": plan
+            }
+            await redis_client.set(f"user:account:{username}", json.dumps(redis_user))
+            await redis_client.set(f"user:email:{email}", username)
     except HTTPException:
         raise
     except Exception as e:
@@ -745,9 +772,11 @@ async def register(request: RegisterRequest):
 
 
 @app.post("/auth/guest")
-async def guest_login():
-    guest_uuid = uuid.uuid4().hex[:8]
-    username = f"guest_{guest_uuid}"
+async def guest_login(request: GuestLoginRequest):
+    device_id = re.sub(r'[^a-zA-Z0-9\-_]', '', request.device_id)
+    if not device_id:
+        device_id = uuid.uuid4().hex[:8]
+    username = f"guest_{device_id}"
     token = uuid.uuid4().hex
     await redis_client.setex(f"session:{token}", 86400, username)
     # Save guest profile explicitly
@@ -772,9 +801,30 @@ async def login(request: LoginRequest):
     password = request.password
 
     try:
+        # Check Redis persistent fallback first to restore user if SQLite was wiped
+        redis_data = await redis_client.get(f"user:account:{username}")
+        if "@" in username:
+            resolved_username = await redis_client.get(f"user:email:{username}")
+            if resolved_username:
+                username_str = resolved_username.decode('utf-8') if isinstance(resolved_username, bytes) else resolved_username
+                redis_data = await redis_client.get(f"user:account:{username_str}")
+        
+        if redis_data:
+            redis_data_str = redis_data.decode('utf-8') if isinstance(redis_data, bytes) else redis_data
+            user_data = json.loads(redis_data_str)
+            async with aiosqlite.connect("checkpoints.db") as conn:
+                await conn.execute(
+                    "INSERT OR IGNORE INTO users (username, email, password_hash, auth_provider, display_name, plan) VALUES (?, ?, ?, ?, ?, ?)",
+                    (user_data["username"], user_data["email"], user_data["password_hash"], user_data["auth_provider"], user_data["display_name"], user_data["plan"])
+                )
+                await conn.commit()
+    except Exception as re_err:
+        logger.error("Failed to restore local user from Redis fallback: %s", re_err)
+
+    try:
         async with aiosqlite.connect("checkpoints.db") as conn:
             conn.row_factory = aiosqlite.Row
-            async with conn.execute("SELECT * FROM users WHERE username = ?", (username,)) as c:
+            async with conn.execute("SELECT * FROM users WHERE username = ? OR email = ?", (username, username)) as c:
                 row = await c.fetchone()
                 if not row:
                     raise HTTPException(
@@ -794,6 +844,7 @@ async def login(request: LoginRequest):
                         detail="Invalid username or password"
                     )
 
+                username = row["username"]
                 display_name = row["display_name"] or row["username"]
     except HTTPException:
         raise
@@ -825,6 +876,24 @@ async def google_login(request: GoogleLoginRequest):
 
     username = base_username
     try:
+        # Check Redis persistent fallback first to restore user if SQLite was wiped
+        username_from_redis = await redis_client.get(f"user:email:{email}")
+        if username_from_redis:
+            username_str = username_from_redis.decode('utf-8') if isinstance(username_from_redis, bytes) else username_from_redis
+            redis_data = await redis_client.get(f"user:account:{username_str}")
+            if redis_data:
+                redis_data_str = redis_data.decode('utf-8') if isinstance(redis_data, bytes) else redis_data
+                user_data = json.loads(redis_data_str)
+                async with aiosqlite.connect("checkpoints.db") as conn:
+                    await conn.execute(
+                        "INSERT OR IGNORE INTO users (username, email, password_hash, auth_provider, display_name, plan) VALUES (?, ?, ?, ?, ?, ?)",
+                        (user_data["username"], user_data["email"], user_data["password_hash"], user_data["auth_provider"], user_data["display_name"], user_data["plan"])
+                    )
+                    await conn.commit()
+    except Exception as re_err:
+        logger.error("Failed to restore Google user from Redis fallback: %s", re_err)
+
+    try:
         async with aiosqlite.connect("checkpoints.db") as conn:
             conn.row_factory = aiosqlite.Row
             # Check if user already exists
@@ -839,7 +908,7 @@ async def google_login(request: GoogleLoginRequest):
                     while True:
                         async with conn.execute("SELECT username FROM users WHERE username = ?", (username,)) as uc:
                             if not await uc.fetchone():
-                                break
+                                  break
                             username = f"{base_username}_{counter}"
                             counter += 1
 
@@ -849,6 +918,18 @@ async def google_login(request: GoogleLoginRequest):
                         (username, email, display_name, plan)
                     )
                     await conn.commit()
+
+                    # Save persistent backup to Redis
+                    redis_user = {
+                        "username": username,
+                        "email": email,
+                        "password_hash": None,
+                        "auth_provider": "google",
+                        "display_name": display_name,
+                        "plan": plan
+                    }
+                    await redis_client.set(f"user:account:{username}", json.dumps(redis_user))
+                    await redis_client.set(f"user:email:{email}", username)
     except Exception as e:
         logger.error("Google login database error: %s", e)
         raise HTTPException(
