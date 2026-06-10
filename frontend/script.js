@@ -20,7 +20,7 @@ if (window.location.protocol === 'file:') {
         const urlStr = url.toString();
         let responseData = {};
         let status = 200;
-        
+
         if (urlStr.includes('/auth/register') || urlStr.includes('/auth/login')) {
             const body = options.body ? JSON.parse(options.body) : {};
             responseData = {
@@ -107,7 +107,7 @@ if (window.location.protocol === 'file:') {
         } else {
             return originalFetch(url, options);
         }
-        
+
         return {
             ok: status >= 200 && status < 300,
             status: status,
@@ -131,16 +131,16 @@ async function authenticatedFetch(url, options = {}) {
             'Authorization': `Bearer ${token}`
         };
     }
-    
+
     const res = await fetch(url, options);
-    
+
     if (res.status === 401) {
         localStorage.removeItem('crickait_token');
         localStorage.removeItem('crickait_username');
         localStorage.removeItem('crickait_display_name');
         showAuthOverlay();
     }
-    
+
     return res;
 }
 
@@ -162,7 +162,7 @@ const currentChatTitle = document.getElementById('current-chat-title');
 window.onload = function () {
     initApp();
     setupEventListeners();
-    
+
     // Initialize Google Sign-in
     if (window.google) {
         google.accounts.id.initialize({
@@ -256,7 +256,7 @@ function setupEventListeners() {
     newChatBtn.addEventListener('click', startNewChat);
 
     // Input auto-resize and send logic
-    chatInput.addEventListener('input', function() {
+    chatInput.addEventListener('input', function () {
         this.style.height = 'auto';
         this.style.height = (this.scrollHeight) + 'px';
         if (this.value.trim().length > 0) {
@@ -266,7 +266,7 @@ function setupEventListeners() {
         }
     });
 
-    chatInput.addEventListener('keydown', function(e) {
+    chatInput.addEventListener('keydown', function (e) {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             sendMessage();
@@ -288,7 +288,7 @@ function setupEventListeners() {
 
 // UUID generator for new sessions
 function generateUUID() {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
         var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
         return v.toString(16);
     });
@@ -299,10 +299,10 @@ function startNewChat() {
     welcomeScreen.style.display = 'flex';
     messagesWrapper.innerHTML = '';
     currentChatTitle.textContent = 'New Chat';
-    
+
     // Update active class in sidebar
     document.querySelectorAll('.chat-item').forEach(item => item.classList.remove('active'));
-    
+
     // On mobile, close sidebar
     if (window.innerWidth <= 768) {
         sidebar.classList.add('closed');
@@ -315,17 +315,17 @@ async function loadSessions() {
             authenticatedFetch(`${API_URL}/sessions`),
             authenticatedFetch(`${API_URL}/session-names`)
         ]);
-        
+
         const sessionsData = await sessionsRes.json();
         const namesData = await namesRes.json();
-        
+
         const sessions = sessionsData.sessions || [];
-        
+
         chatList.innerHTML = '';
         if (sessions.length > 0) {
             sessions.reverse().forEach(sid => {
                 const name = namesData[sid] || `Chat ${sid.substring(0, 4)}`;
-                
+
                 const item = document.createElement('div');
                 item.className = `chat-item ${sid === currentSessionId ? 'active' : ''}`;
                 item.innerHTML = `
@@ -343,7 +343,7 @@ async function loadSessions() {
                 item.addEventListener('click', () => loadChatHistory(sid, name));
                 chatList.appendChild(item);
             });
-            
+
             // Always start with a fresh new chat view on reload
             if (!currentSessionId) {
                 startNewChat();
@@ -360,7 +360,7 @@ async function loadSessions() {
 window.toggleDropdown = (sid, event) => {
     event.stopPropagation();
     document.querySelectorAll('.dropdown').forEach(d => {
-        if(d.querySelector('.dropdown-content').id !== `dropdown-${sid}`) d.classList.remove('show');
+        if (d.querySelector('.dropdown-content').id !== `dropdown-${sid}`) d.classList.remove('show');
     });
     const dropdown = document.getElementById(`dropdown-${sid}`).parentElement;
     dropdown.classList.toggle('show');
@@ -382,7 +382,7 @@ function showCustomModal(title, message, isPrompt = false, defaultValue = '') {
 
         titleEl.textContent = title;
         messageEl.textContent = message;
-        
+
         if (isPrompt) {
             inputEl.style.display = 'block';
             inputEl.value = defaultValue;
@@ -417,7 +417,7 @@ function showErrorPage(type) {
     const img = document.getElementById('error-image');
     const title = document.getElementById('error-title');
     const msg = document.getElementById('error-message');
-    
+
     if (type === 'duck') {
         img.src = 'duck_out.png';
         title.textContent = 'DUCK OUT!';
@@ -427,7 +427,7 @@ function showErrorPage(type) {
         title.textContent = 'WICKET DOWN';
         msg.textContent = "The server encountered an unexpected glitch. Please check back soon or try reloading.";
     }
-    
+
     overlay.style.display = 'flex';
 }
 
@@ -446,7 +446,7 @@ window.editSessionName = async (sid, oldName, event) => {
             if (currentSessionId === sid) {
                 currentChatTitle.textContent = newName.trim();
             }
-        } catch(e) { 
+        } catch (e) {
             console.error(e);
             showErrorPage('server');
         }
@@ -456,15 +456,15 @@ window.editSessionName = async (sid, oldName, event) => {
 window.deleteSession = async (sid, event) => {
     event.stopPropagation();
     const confirmed = await showCustomModal("Delete Chat", "Are you sure you want to delete this chat?", false);
-    if(confirmed) {
+    if (confirmed) {
         try {
             await authenticatedFetch(`${API_URL}/clear/${sid}`, { method: 'DELETE' });
             if (currentSessionId === sid) {
                 currentSessionId = null;
             }
             loadSessions();
-        } catch (e) { 
-            console.error(e); 
+        } catch (e) {
+            console.error(e);
             showErrorPage('server');
         }
     }
@@ -473,18 +473,18 @@ window.deleteSession = async (sid, event) => {
 async function loadChatHistory(sid, name) {
     currentSessionId = sid;
     currentChatTitle.textContent = name;
-    
+
     // Update active class
     document.querySelectorAll('.chat-item').forEach(item => item.classList.remove('active'));
     // Mobile behavior
     if (window.innerWidth <= 768) sidebar.classList.add('closed');
-    
+
     try {
         const res = await authenticatedFetch(`${API_URL}/history/${sid}`);
         const data = await res.json();
-        
+
         const messages = data.messages || [];
-        
+
         if (messages.length > 0) {
             welcomeScreen.style.display = 'none';
             messagesWrapper.innerHTML = '';
@@ -503,24 +503,24 @@ async function loadProfile() {
     try {
         const res = await authenticatedFetch(`${API_URL}/profile`);
         const profile = await res.json();
-        
+
         profileTags.innerHTML = '';
         let hasTags = false;
-        
+
         if (profile.favorite_players && profile.favorite_players.length > 0) {
             hasTags = true;
             profile.favorite_players.forEach(p => {
                 profileTags.innerHTML += `<div class="tag player">👤 ${p} <button onclick="deleteProfileItem('favorite_players', '${p}')"><i class="fa-solid fa-xmark"></i></button></div>`;
             });
         }
-        
+
         if (profile.favorite_teams && profile.favorite_teams.length > 0) {
             hasTags = true;
             profile.favorite_teams.forEach(t => {
                 profileTags.innerHTML += `<div class="tag team">🛡️ ${t} <button onclick="deleteProfileItem('favorite_teams', '${t}')"><i class="fa-solid fa-xmark"></i></button></div>`;
             });
         }
-        
+
         const profileSection = document.getElementById('profile-section');
         if (!hasTags) {
             if (profileSection) profileSection.style.display = 'none';
@@ -545,10 +545,10 @@ function appendMessage(role, content) {
     const isUser = role === 'user';
     const msgDiv = document.createElement('div');
     msgDiv.className = `message ${role}`;
-    
+
     // Parse markdown for bot messages
     let formattedContent = isUser ? content : DOMPurify.sanitize(marked.parse(content));
-    
+
     msgDiv.innerHTML = `
         <div class="message-avatar">${isUser ? '👤' : '🏏'}</div>
         <div class="message-content">${formattedContent}</div>
@@ -580,10 +580,10 @@ function appendLoading() {
 async function sendMessage() {
     const text = chatInput.value.trim();
     if (!text) return;
-    
+
     if (!currentSessionId) startNewChat();
     const isFirstMessage = (messagesWrapper.children.length === 0);
-    
+
     let renamePromise = null;
     if (isFirstMessage) {
         currentChatTitle.textContent = "Generating title...";
@@ -599,37 +599,37 @@ async function sendMessage() {
             }
         }).catch(e => console.error(e));
     }
-    
+
     // Reset input
     chatInput.value = '';
     chatInput.style.height = 'auto';
     sendBtn.setAttribute('disabled', 'true');
     welcomeScreen.style.display = 'none';
-    
+
     appendMessage('user', text);
     scrollToBottom();
-    
+
     const loadingDiv = appendLoading();
     scrollToBottom();
-    
+
     try {
         const res = await authenticatedFetch(`${API_URL}/ask?user_prompt=${encodeURIComponent(text)}&session_id=${currentSessionId}`, {
             method: 'POST'
         });
         const data = await res.json();
-        
+
         loadingDiv.remove();
         appendMessage('assistant', data.response);
         scrollToBottom();
-        
+
         // Wait for rename to finish so backend is updated before fetching list
         if (renamePromise) await renamePromise;
-        
+
         // Reload sidebar to reflect new session if it was the first message
         loadSessions();
         // Reload profile in case the AI extracted new preferences
         loadProfile();
-        
+
     } catch (e) {
         loadingDiv.remove();
         console.error("AI Error:", e);
@@ -650,9 +650,9 @@ window.openScorecard = async (matchId) => {
     const overlay = document.getElementById('scorecard-overlay');
     overlay.style.display = 'flex';
     document.getElementById('sc-innings-content').innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-secondary);"><div class="cricket-loader" style="justify-content:center; margin-bottom:12px;"><div class="cricket-loader-bouncer"><div class="cricket-loader-ball"></div></div><div class="cricket-loader-bouncer" style="animation-delay:0.15s"><div class="cricket-loader-ball"></div></div><div class="cricket-loader-bouncer" style="animation-delay:0.3s"><div class="cricket-loader-ball"></div></div></div>Loading scorecard...</div>';
-    
+
     await fetchAndRenderScorecard(matchId);
-    
+
     // Auto-refresh scorecard every 30 seconds
     if (scorecardRefreshInterval) clearInterval(scorecardRefreshInterval);
     scorecardRefreshInterval = setInterval(() => fetchAndRenderScorecard(matchId), 30000);
@@ -676,7 +676,7 @@ async function fetchAndRenderScorecard(matchId) {
 function renderScorecard(data) {
     // Match name
     document.getElementById('sc-match-name').textContent = data.name || 'Match';
-    
+
     // Teams
     const teamInfo = data.teamInfo || [];
     let teamsHtml = '';
@@ -690,13 +690,13 @@ function renderScorecard(data) {
         teamsHtml = `<div class="sc-vs">${data.teams.join(' vs ')}</div>`;
     }
     document.getElementById('sc-teams').innerHTML = teamsHtml;
-    
+
     // Info
     let infoHtml = `<span>📍 ${data.venue || 'Unknown'}</span>`;
     if (data.tossWinner) infoHtml += ` &nbsp;|&nbsp; <span>🪙 Toss: ${data.tossWinner} chose to ${data.tossChoice}</span>`;
     infoHtml += ` &nbsp;|&nbsp; <span>🏏 ${(data.matchType || '').toUpperCase()}</span>`;
     document.getElementById('sc-info').innerHTML = infoHtml;
-    
+
     // Score bar
     const scores = data.score || [];
     document.getElementById('sc-score-bar').innerHTML = scores.map(s => {
@@ -709,15 +709,15 @@ function renderScorecard(data) {
             </div>
         `;
     }).join('');
-    
+
     // Status
     document.getElementById('sc-status-bar').innerHTML = `<span class="live-pulse"></span> ${data.status}`;
-    
+
     // Innings tabs
     const scorecard = data.scorecard || [];
     if (scorecard.length > 0) {
-        document.getElementById('sc-innings-tabs').innerHTML = scorecard.map((inn, i) => 
-            `<button class="sc-innings-tab ${i === 0 ? 'active' : ''}" onclick="switchInning(${i})">${inn.inning || ('Innings ' + (i+1))}</button>`
+        document.getElementById('sc-innings-tabs').innerHTML = scorecard.map((inn, i) =>
+            `<button class="sc-innings-tab ${i === 0 ? 'active' : ''}" onclick="switchInning(${i})">${inn.inning || ('Innings ' + (i + 1))}</button>`
         ).join('');
         renderInning(scorecard[0]);
     } else {
@@ -751,7 +751,7 @@ function getDismissalClass(dismissal) {
 function renderInning(inning) {
     const content = document.getElementById('sc-innings-content');
     let html = '';
-    
+
     // Batting
     const batting = inning.batting || [];
     if (batting.length > 0) {
@@ -759,14 +759,14 @@ function renderInning(inning) {
         html += `<table class="sc-table"><thead><tr>
             <th>Batter</th><th>R</th><th>B</th><th>4s</th><th>6s</th><th>SR</th><th>Dismissal</th>
         </tr></thead><tbody>`;
-        
+
         batting.forEach(b => {
             const name = b.batsman ? b.batsman.name : 'Unknown';
             const dismissal = b.dismissal || 'not out';
             const dismissalText = b['dismissal-text'] || '';
             const badgeClass = getDismissalClass(dismissal);
             const badgeLabel = dismissal === 'not out' ? 'NOT OUT' : dismissal.toUpperCase();
-            
+
             html += `<tr>
                 <td>
                     <span class="sc-player-name">${name}</span>
@@ -782,7 +782,7 @@ function renderInning(inning) {
         });
         html += `</tbody></table>`;
     }
-    
+
     // Bowling
     const bowling = inning.bowling || [];
     if (bowling.length > 0) {
@@ -790,7 +790,7 @@ function renderInning(inning) {
         html += `<table class="sc-table"><thead><tr>
             <th>Bowler</th><th>O</th><th>M</th><th>R</th><th>W</th><th>ECO</th>
         </tr></thead><tbody>`;
-        
+
         bowling.forEach(bw => {
             const name = bw.bowler ? bw.bowler.name : 'Unknown';
             html += `<tr>
@@ -804,11 +804,11 @@ function renderInning(inning) {
         });
         html += `</tbody></table>`;
     }
-    
+
     if (!batting.length && !bowling.length) {
         html = '<div style="text-align:center; padding:30px; color:var(--text-secondary);">Innings data not available yet.</div>';
     }
-    
+
     content.innerHTML = html;
 }
 
@@ -937,20 +937,20 @@ window.handleGoogleCredentialResponse = async (response) => {
         // Decode JWT payload locally to get email and name
         const payloadBase64Url = response.credential.split('.')[1];
         const payloadBase64 = payloadBase64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const payloadJson = decodeURIComponent(atob(payloadBase64).split('').map(function(c) {
+        const payloadJson = decodeURIComponent(atob(payloadBase64).split('').map(function (c) {
             return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
         }).join(''));
         const payload = JSON.parse(payloadJson);
-        
+
         const res = await fetch(`${API_URL}/auth/google`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                email: payload.email, 
-                display_name: payload.name || payload.email.split('@')[0] 
+            body: JSON.stringify({
+                email: payload.email,
+                display_name: payload.name || payload.email.split('@')[0]
             })
         });
-        
+
         const data = await res.json();
         if (!res.ok) {
             alert(data.detail || 'Google sign-in failed');
@@ -980,7 +980,7 @@ window.updateUserProfileTrigger = async () => {
             localStorage.setItem('crickait_plan', data.plan);
             localStorage.setItem('crickait_email', data.email);
         }
-    } catch(e) {
+    } catch (e) {
         console.error("Failed to fetch user profile", e);
     }
 
@@ -994,14 +994,14 @@ window.updateUserProfileTrigger = async () => {
     document.getElementById('popover-user-avatar').textContent = initials;
     document.getElementById('popover-display-name').textContent = displayName;
     document.getElementById('popover-email').textContent = email;
-    
+
     // Update role display
     let roleText = 'Free Plan';
     if (plan === 'pro') roleText = 'Pro Plan';
     if (plan === 'guest') roleText = 'Guest User';
     const roleEls = document.querySelectorAll('.user-role');
     roleEls.forEach(el => el.textContent = roleText);
-    
+
     // Update popover for guests
     const logoutBtn = document.getElementById('menu-logout');
     if (plan === 'guest') {
@@ -1019,12 +1019,12 @@ window.updateUserProfileTrigger = async () => {
         document.getElementById('menu-profile').style.display = 'block';
         document.getElementById('menu-settings').style.display = 'block';
     }
-    
+
     // Update profile modal
     document.getElementById('profile-avatar-large').textContent = initials;
     document.getElementById('profile-name-val').textContent = displayName;
     document.getElementById('profile-email-val').textContent = email;
-    
+
     // Check if token length suggests Google Login simulation or standard password simulation
     const isGoogle = !localStorage.getItem('crickait_username') || localStorage.getItem('crickait_token').length > 30;
     document.getElementById('profile-provider-val').textContent = isGoogle ? 'Google' : 'Local';
@@ -1034,7 +1034,7 @@ window.updateUserProfileTrigger = async () => {
 function setupProfilePopover() {
     const trigger = document.getElementById('user-profile-trigger');
     const popover = document.getElementById('user-profile-popover');
-    
+
     trigger.addEventListener('click', (e) => {
         e.stopPropagation();
         const isHidden = popover.style.display === 'none';
@@ -1093,7 +1093,7 @@ window.closeModal = (modalId) => {
 async function handleLogout() {
     try {
         await authenticatedFetch(`${API_URL}/auth/logout`, { method: 'POST' });
-    } catch(e) {
+    } catch (e) {
         console.error(e);
     }
     localStorage.removeItem('crickait_token');
@@ -1117,7 +1117,7 @@ window.handleDeleteAccount = async () => {
             } else {
                 alert("Failed to delete account.");
             }
-        } catch(e) {
+        } catch (e) {
             console.error(e);
             alert("Error deleting account.");
         }
@@ -1133,7 +1133,7 @@ window.handleClearFavoritesProfile = async () => {
                 window.closeModal('settings-modal');
                 await loadProfile();
             }
-        } catch(e) {
+        } catch (e) {
             console.error(e);
         }
     }
@@ -1143,7 +1143,7 @@ window.loadPersonalizationData = async () => {
     try {
         const res = await authenticatedFetch(`${API_URL}/profile`);
         const profile = await res.json();
-        
+
         if (profile.expertise_level) {
             document.getElementById('expertise-level').value = profile.expertise_level;
         }
@@ -1155,7 +1155,7 @@ window.loadPersonalizationData = async () => {
         if (profile.rival_teams) {
             document.getElementById('rival-teams').value = profile.rival_teams.join(', ');
         }
-    } catch(e) {
+    } catch (e) {
         console.error(e);
     }
 };
@@ -1167,7 +1167,7 @@ window.savePersonalization = async (event) => {
     if (document.getElementById('pref-t20').checked) formats.push('T20');
     if (document.getElementById('pref-odi').checked) formats.push('ODI');
     if (document.getElementById('pref-test').checked) formats.push('Test');
-    
+
     const rivalInput = document.getElementById('rival-teams').value;
     const rivals = rivalInput ? rivalInput.split(',').map(s => s.trim()).filter(Boolean) : [];
 
@@ -1188,7 +1188,7 @@ window.savePersonalization = async (event) => {
         } else {
             alert("Failed to save preferences.");
         }
-    } catch(e) {
+    } catch (e) {
         console.error(e);
         alert("Error saving preferences.");
     }
@@ -1197,7 +1197,7 @@ window.savePersonalization = async (event) => {
 window.simulateUpgrade = () => {
     alert("Congratulations! You have been upgraded to CrickAIt Pro Plan (Simulated).");
     window.closeModal('upgrade-modal');
-    
+
     // Update local role display text
     document.querySelectorAll('.user-role').forEach(el => {
         el.textContent = "Pro Plan";
