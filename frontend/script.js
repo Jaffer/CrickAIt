@@ -1,12 +1,15 @@
-// Set to your actual backend URL in production
-const PROD_BACKEND_URL = 'http://localhost:8000'; 
+// Set to your actual backend URL in production (e.g. Render/Railway URL)
+const PROD_BACKEND_URL = 'https://crickait-backend.onrender.com'; // UPDATE THIS LATER
 
 let API_URL = window.location.origin;
 if (window.location.protocol === 'file:' || window.location.origin === 'null') {
     API_URL = '';
 } else if (window.location.port !== '8000' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-    // If frontend is running on a separate local dev server (e.g. port 3000), point to backend on 8000
+    // Local dev server (port 3000)
     API_URL = 'http://localhost:8000';
+} else if (window.location.hostname.includes('vercel.app') || window.location.hostname !== 'localhost') {
+    // Production Vercel deployment
+    API_URL = PROD_BACKEND_URL;
 }
 let currentSessionId = null;
 
