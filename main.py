@@ -502,18 +502,13 @@ async def expert_node(state: AgentState):
     current_retries = state.get("retry_count", 0)
 
     custom_prompt = STRICT_SYSTEM_PROMPT + f"\nUSER PROFILE: {profile}"
-    messages = [SystemMessage(content=custom_prompt)] + state["messages"]
-
     if current_retries >= 1:
-        messages.append(
-            SystemMessage(
-                content=(
-                    "CRITICAL: You have the search data. Answer the question "
-                    "with text or bullet points now. DO NOT call more tools."
-                )
-            )
+        custom_prompt += (
+            "\n\nCRITICAL: You have the search data. Answer the question "
+            "with text or bullet points now. DO NOT call more tools."
         )
 
+    messages = [SystemMessage(content=custom_prompt)] + state["messages"]
     answer = await expert_llm_with_tools.ainvoke(messages)
 
     if current_retries >= 1 and hasattr(answer, "tool_calls") and answer.tool_calls:
