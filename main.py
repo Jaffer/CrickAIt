@@ -699,15 +699,28 @@ async def register(request: RegisterRequest):
             detail="Username can only contain alphanumeric characters, hyphens, and underscores"
         )
 
-    if len(password) < 6:
+    # Validate email
+    if not re.match(r"^[^\s@]+@[^\s@]+\.[^\s@]+$", email):
         raise HTTPException(
             status_code=400,
-            detail="Password must be at least 6 characters long"
+            detail="Please enter a valid email address"
+        )
+
+    if len(password) < 8:
+        raise HTTPException(
+            status_code=400,
+            detail="Password must be at least 8 characters long"
         )
     if not any(c.isalpha() for c in password) or not any(c.isdigit() for c in password):
         raise HTTPException(
             status_code=400,
             detail="Password must contain at least one letter and one number"
+        )
+    special_chars = set("!@#$%^&*()_+-=[]{}|;':\",./<>?\\~`")
+    if not any(c in special_chars for c in password):
+        raise HTTPException(
+            status_code=400,
+            detail="Password must contain at least one special character"
         )
 
     try:

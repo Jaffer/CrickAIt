@@ -373,6 +373,28 @@ function setupEventListeners() {
             sendMessage();
         });
     });
+    // Password requirements validation on input
+    const authPasswordInput = document.getElementById('auth-password');
+    const requirementsText = document.getElementById('password-requirements-text');
+    if (authPasswordInput && requirementsText) {
+        authPasswordInput.addEventListener('input', () => {
+            if (authMode !== 'signup') {
+                requirementsText.style.display = 'none';
+                return;
+            }
+            const val = authPasswordInput.value;
+            const hasLength = val.length >= 8;
+            const hasLetterNum = /[a-zA-Z]/.test(val) && /[0-9]/.test(val);
+            const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':",./<>?|\\~`]/.test(val);
+            
+            if (hasLength && hasLetterNum && hasSpecial) {
+                requirementsText.classList.add('satisfied');
+            } else {
+                requirementsText.classList.remove('satisfied');
+            }
+        });
+    }
+
     // Profile settings popover and modal events
     setupProfilePopover();
 }
@@ -944,6 +966,14 @@ window.hideAuthOverlay = () => {
     document.getElementById('auth-overlay').style.display = 'none';
 };
 
+window.closeAuthOverlay = () => {
+    if (localStorage.getItem('crickait_token')) {
+        window.hideAuthOverlay();
+    } else {
+        window.continueAsGuest();
+    }
+};
+
 window.toggleAuthMode = () => {
     const usernameGroup = document.getElementById('username-group');
     const authTitle = document.getElementById('auth-title');
@@ -964,6 +994,8 @@ window.toggleAuthMode = () => {
         authSubmitBtn.textContent = 'Sign Up';
         authToggleText.textContent = 'Already have an account?';
         authToggleBtn.textContent = 'Sign In';
+        const reqsText = document.getElementById('password-requirements-text');
+        if (reqsText) reqsText.style.display = 'block';
     } else {
         authMode = 'login';
         usernameGroup.style.display = 'none';
@@ -974,6 +1006,8 @@ window.toggleAuthMode = () => {
         authSubmitBtn.textContent = 'Sign In';
         authToggleText.textContent = "Don't have an account?";
         authToggleBtn.textContent = 'Sign Up';
+        const reqsText = document.getElementById('password-requirements-text');
+        if (reqsText) reqsText.style.display = 'none';
     }
 };
 
@@ -1014,14 +1048,28 @@ window.handleAuthSubmit = async (event) => {
     submitBtn.textContent = authMode === 'login' ? 'Signing In...' : 'Signing Up...';
 
     if (authMode === 'signup') {
-        if (password.length < 6) {
-            alert('Password must be at least 6 characters long.');
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(emailOrUser)) {
+            alert('Please enter a valid email address.');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Sign Up';
+            return;
+        }
+        if (password.length < 8) {
+            alert('Password must be at least 8 characters long.');
             submitBtn.disabled = false;
             submitBtn.textContent = 'Sign Up';
             return;
         }
         if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
             alert('Password must contain at least one letter and one number.');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Sign Up';
+            return;
+        }
+        const specialCharRegex = /[!@#$%^&*()_+\-=\[\]{};':",./<>?|\\~`]/;
+        if (!specialCharRegex.test(password)) {
+            alert('Password must contain at least one special character.');
             submitBtn.disabled = false;
             submitBtn.textContent = 'Sign Up';
             return;
@@ -1137,7 +1185,9 @@ window.updateUserProfileTrigger = async () => {
 
     // Update popover for guests
     const logoutBtn = document.getElementById('menu-logout');
+    const headerAuthBtn = document.getElementById('header-auth-btn');
     if (plan === 'guest') {
+        if (headerAuthBtn) headerAuthBtn.style.display = 'inline-flex';
         logoutBtn.innerHTML = '<i class="fa-solid fa-user-plus"></i> Sign Up / Sign In';
         logoutBtn.classList.remove('logout');
         document.getElementById('menu-upgrade').style.display = 'none';
@@ -1145,6 +1195,7 @@ window.updateUserProfileTrigger = async () => {
         document.getElementById('menu-profile').style.display = 'none';
         document.getElementById('menu-settings').style.display = 'none';
     } else {
+        if (headerAuthBtn) headerAuthBtn.style.display = 'none';
         logoutBtn.innerHTML = '<i class="fa-solid fa-right-from-bracket"></i> Log out';
         logoutBtn.classList.add('logout');
         document.getElementById('menu-upgrade').style.display = 'block';

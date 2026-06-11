@@ -15,7 +15,7 @@
     <!-- Sleek Auth Card Overlay -->
     <div id="auth-overlay" class="auth-overlay">
         <div class="auth-card">
-            <button class="close-auth" onclick="continueAsGuest()" aria-label="Continue as Guest">&times;</button>
+            <button class="close-auth" onclick="closeAuthOverlay()" aria-label="Close Auth Overlay">&times;</button>
             <div class="auth-logo">
                 <img src="favicon.png" alt="CrickAIt Logo">
             </div>
@@ -34,6 +34,9 @@
                 <div class="input-group">
                     <label for="auth-password">Password</label>
                     <input type="password" id="auth-password" placeholder="••••••••" required autocomplete="current-password">
+                    <div id="password-requirements-text" class="requirements-text" style="display: none;">
+                        Must be at least 8 characters, with letters, numbers, and a special character.
+                    </div>
                 </div>
                 
                 <button type="submit" class="auth-submit-btn" id="auth-submit-btn">Sign In</button>
@@ -144,7 +147,10 @@
                     <i class="fa-solid fa-window-restore"></i>
                 </button>
                 <div class="header-title" id="current-chat-title">CrickAIt 1.0</div>
-                <div class="header-right">
+                <div class="header-right" style="display: flex; align-items: center; gap: 12px;">
+                    <button class="header-auth-btn" id="header-auth-btn" onclick="window.showAuthOverlay()" style="display: none;">
+                        <i class="fa-solid fa-user-plus"></i> Sign Up / Sign In
+                    </button>
                     <div class="header-credits-container" id="header-credits-container">
                         <span class="header-credits-pill">
                             <i class="fa-solid fa-bolt"></i>
