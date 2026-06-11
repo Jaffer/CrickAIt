@@ -43,7 +43,7 @@ body {
 .ticker-move {
     display: inline-block;
     white-space: nowrap;
-    animation: scroll 20s linear infinite;
+    animation: scroll 90s linear infinite;
     font-size: 13px;
     color: #10a37f;
     font-family: monospace;
