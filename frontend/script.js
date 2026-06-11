@@ -1033,7 +1033,7 @@ window.continueAsGuest = async () => {
         }
     } catch (e) {
         console.error(e);
-        alert('Network error during guest login.');
+        alert('Network connection error. If this is the first action in a while, the backend server might be waking up (Render free tier cold starts can take up to 60 seconds). Please wait a moment and try again.');
     }
 };
 
@@ -1106,7 +1106,7 @@ window.handleAuthSubmit = async (event) => {
         await initApp();
     } catch (e) {
         console.error(e);
-        alert('Connection error occurred');
+        alert('Connection error occurred. If the server was inactive, it may take up to 60 seconds to start up. Please try again in a moment.');
     } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = authMode === 'login' ? 'Sign In' : 'Sign Up';
