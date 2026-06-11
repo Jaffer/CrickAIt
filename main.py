@@ -17,7 +17,8 @@ from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
-from langchain_community.tools import DuckDuckGoSearchRun, WikipediaQueryRun
+from langchain_community.tools.tavily_search import TavilySearchResults
+from langchain_community.tools import WikipediaQueryRun
 from langchain_community.utilities import WikipediaAPIWrapper
 from langchain_core.tools import tool
 from langchain_groq import ChatGroq
@@ -313,7 +314,7 @@ structured_extractor = fast_router_llm.with_structured_output(
     UserProfileExtraction
 )
 
-web_search = DuckDuckGoSearchRun()
+web_search = TavilySearchResults(max_results=3)
 wiki = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())
 
 
@@ -341,7 +342,7 @@ def fetch_live_web(query: str):
     """
     logger.info("Web search triggered: %s", query)
     try:
-        raw_data = web_search.invoke(f"{query} March 2026")
+        raw_data = web_search.invoke(query)
         return raw_data[:2000]
     except Exception as e:
         return f"Search failed: {e}"
