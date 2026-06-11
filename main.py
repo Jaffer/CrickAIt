@@ -1271,6 +1271,9 @@ async def get_scores(username: str = Depends(get_current_user)):
 
         live_matches = []
         for match in data.get("data", []):
+            if match.get("matchEnded", False):
+                continue
+
             scores = []
             for s in match.get("score", []):
                 scores.append({
