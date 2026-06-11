@@ -317,7 +317,10 @@ web_search = DuckDuckGoSearchRun()
 wiki = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())
 
 
-@tool
+class HistoricalSearchInput(BaseModel):
+    query: str = Field(..., description="The search query for historical cricket facts")
+
+@tool(args_schema=HistoricalSearchInput)
 def get_historical_context(query: str):
     """Search Wikipedia for historical cricket facts."""
     try:
@@ -327,7 +330,10 @@ def get_historical_context(query: str):
         return f"Wikipedia search failed: {e}"
 
 
-@tool
+class LiveWebSearchInput(BaseModel):
+    query: str = Field(..., description="The search query for live cricket news and scores")
+
+@tool(args_schema=LiveWebSearchInput)
 def fetch_live_web(query: str):
     """MANDATORY for live 2026 cricket data, scores, and news.
 
@@ -341,7 +347,10 @@ def fetch_live_web(query: str):
         return f"Search failed: {e}"
 
 
-@tool
+class PlayerSearchInput(BaseModel):
+    query: str = Field(..., description="The search query to find a player's country")
+
+@tool(args_schema=PlayerSearchInput)
 async def fetch_player_and_live_matches(query: str):
     """Use ONLY to find a player's country.
 
