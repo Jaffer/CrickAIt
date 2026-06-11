@@ -106,6 +106,9 @@ class SmartRedisClient:
             self.use_mock = True
             return await self._get_mock().set(key, value, ex)
 
+    async def setex(self, key: str, seconds: int, value: str):
+        return await self.set(key, value, ex=seconds)
+
     async def incr(self, key: str):
         if self.use_mock:
             return await self._get_mock().incr(key)
@@ -287,7 +290,7 @@ class AutoRenameRequest(BaseModel):
 
 
 class GuestLoginRequest(BaseModel):
-    device_id: str
+    device_id: Optional[str] = None
 
 
 class RegisterRequest(BaseModel):
@@ -790,7 +793,8 @@ async def register(request: RegisterRequest):
 
 @app.post("/auth/guest")
 async def guest_login(request: GuestLoginRequest):
-    device_id = re.sub(r'[^a-zA-Z0-9\-_]', '', request.device_id)
+    dev_id = request.device_id or ""
+    device_id = re.sub(r'[^a-zA-Z0-9\-_]', '', dev_id)
     if not device_id:
         device_id = uuid.uuid4().hex[:8]
     username = f"guest_{device_id}"
