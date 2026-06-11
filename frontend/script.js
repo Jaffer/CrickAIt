@@ -1379,14 +1379,6 @@ window.savePersonalization = async (event) => {
     }
 };
 
-window.simulateUpgrade = () => {
-    alert("Congratulations! You have been upgraded to CrickAIt Pro Plan (Simulated).");
-    window.closeModal('upgrade-modal');
-
-    // Update local role display text
-    document.querySelectorAll('.user-role').forEach(el => {
-        el.textContent = "Pro Plan";
-    });
-    const statusVal = document.getElementById('profile-status-val');
-    if (statusVal) statusVal.textContent = "Pro User";
+window.initiateUpgrade = () => {
+    alert("Payment gateway integration (Stripe) is pending. Upgrade unavailable at this time.");
 };
