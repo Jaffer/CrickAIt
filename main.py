@@ -1370,9 +1370,28 @@ async def get_top_news(t: Optional[float] = None):
                 "List 5 short cricket headlines separated by ' | '. "
                 "No intros, no fluff. Just headlines."
             )
-            news_cache["data"] = (
+            news_text = (
                 await fast_router_llm.ainvoke(f"{prompt} Data: {raw}")
             ).content.strip()
+
+            try:
+                url = f"https://api.cricapi.com/v1/currentMatches?apikey={CRICKET_API_KEY}&offset=0"
+                client = get_http_client()
+                r = await client.get(url, timeout=5.0)
+                data = r.json()
+                completed_matches = []
+                if data.get("status") == "success":
+                    for match in data.get("data", []):
+                        if match.get("matchEnded", False):
+                            completed_matches.append(f"{match.get('name')} ({match.get('status')})")
+                
+                if completed_matches:
+                    match_str = " | ".join(completed_matches[:4])
+                    news_text = f"🏏 RECENT RESULTS: {match_str} | 📰 LATEST NEWS: {news_text}"
+            except Exception as e:
+                logger.error("Failed to fetch completed matches for news: %s", e)
+
+            news_cache["data"] = news_text
             news_cache["time"] = now
         except Exception as e:
             logger.error("News fetch failed: %s", e, exc_info=True)
