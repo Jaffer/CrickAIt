@@ -1202,6 +1202,11 @@ window.updateUserProfileTrigger = async () => {
         document.getElementById('menu-personalization').style.display = 'block';
         document.getElementById('menu-profile').style.display = 'block';
         document.getElementById('menu-settings').style.display = 'block';
+        if (localStorage.getItem('crickait_username') === 'iamthecreator') {
+            document.getElementById('menu-admin').style.display = 'block';
+        } else {
+            document.getElementById('menu-admin').style.display = 'none';
+        }
     }
 
     // Update profile modal
@@ -1238,6 +1243,12 @@ function setupProfilePopover() {
     document.getElementById('menu-upgrade').addEventListener('click', () => {
         popover.style.display = 'none';
         window.openModal('upgrade-modal');
+    });
+
+    document.getElementById('menu-admin').addEventListener('click', () => {
+        popover.style.display = 'none';
+        window.openModal('admin-modal');
+        loadAdminUsers();
     });
 
     document.getElementById('menu-personalization').addEventListener('click', () => {
@@ -1381,4 +1392,53 @@ window.savePersonalization = async (event) => {
 
 window.initiateUpgrade = () => {
     alert("Payment gateway integration (Stripe) is pending. Upgrade unavailable at this time.");
+};
+
+window.loadAdminUsers = async () => {
+    try {
+        const res = await authenticatedFetch(`${API_URL}/admin/users`);
+        if (!res.ok) throw new Error("Failed to load users");
+        const data = await res.json();
+        
+        const tbody = document.getElementById('admin-users-body');
+        tbody.innerHTML = '';
+        
+        data.users.forEach(user => {
+            const row = document.createElement('tr');
+            row.style.borderBottom = '1px solid #333';
+            
+            const actionHtml = user.plan === 'free' 
+                ? `<button onclick="adminUpgradeUser('${user.username}', 'pro')" style="background: var(--primary-accent); border: none; border-radius: 4px; color: #fff; padding: 5px 10px; cursor: pointer; font-size: 0.8rem;">Upgrade to Pro</button>`
+                : `<span style="color: #4CAF50; font-size: 0.8rem;">Pro</span>`;
+                
+            row.innerHTML = `
+                <td style="padding: 10px;">${user.username}</td>
+                <td style="padding: 10px;">${user.email}</td>
+                <td style="padding: 10px;">${user.auth_provider}</td>
+                <td style="padding: 10px;">${user.plan}</td>
+                <td style="padding: 10px;">${new Date(user.created_at).toLocaleString()}</td>
+                <td style="padding: 10px;">${actionHtml}</td>
+            `;
+            tbody.appendChild(row);
+        });
+    } catch (e) {
+        console.error(e);
+        alert("Error loading admin users.");
+    }
+};
+
+window.adminUpgradeUser = async (username, newPlan) => {
+    if(!confirm(`Are you sure you want to upgrade ${username} to ${newPlan}?`)) return;
+    try {
+        const res = await authenticatedFetch(`${API_URL}/admin/upgrade-user`, {
+            method: 'POST',
+            body: JSON.stringify({ username: username, plan: newPlan })
+        });
+        if (!res.ok) throw new Error("Failed to upgrade");
+        alert(`Successfully upgraded ${username} to ${newPlan}!`);
+        loadAdminUsers();
+    } catch (e) {
+        console.error(e);
+        alert("Error upgrading user.");
+    }
 };

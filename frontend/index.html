@@ -121,6 +121,7 @@
                     <button class="popover-item" id="menu-upgrade"><i class="fa-solid fa-wand-magic-sparkles"></i> Upgrade plan</button>
                     <button class="popover-item" id="menu-personalization"><i class="fa-solid fa-sliders"></i> Personalization</button>
                     <button class="popover-item" id="menu-profile"><i class="fa-solid fa-circle-user"></i> Profile</button>
+                    <button class="popover-item" id="menu-admin" style="display: none;"><i class="fa-solid fa-shield-halved"></i> Admin Dashboard</button>
                     <button class="popover-item" id="menu-settings"><i class="fa-solid fa-gear"></i> Settings</button>
                     <div class="popover-divider"></div>
                     <button class="popover-item" id="menu-help"><i class="fa-solid fa-circle-question"></i> Help</button>
@@ -397,6 +398,35 @@
                     
                     <h4>How does Pro Plan work?</h4>
                     <p>Pro Plan unlocks our 70B expert LLM engine, giving you highly detailed tactics, stats tables, and matches predictions.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Modal -->
+    <div id="admin-modal" class="modal">
+        <div class="modal-content" style="max-width: 800px; width: 90%;">
+            <div class="modal-header">
+                <h3>Admin Dashboard</h3>
+                <button class="close-modal" onclick="closeModal('admin-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="overflow-x: auto; margin-top: 1rem;">
+                    <table id="admin-users-table" style="width: 100%; border-collapse: collapse; text-align: left; color: #E0E0E0; font-size: 0.9rem;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid #333; background: #1A1A1A;">
+                                <th style="padding: 10px;">Username</th>
+                                <th style="padding: 10px;">Email</th>
+                                <th style="padding: 10px;">Provider</th>
+                                <th style="padding: 10px;">Plan</th>
+                                <th style="padding: 10px;">Created At</th>
+                                <th style="padding: 10px;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-users-body">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>

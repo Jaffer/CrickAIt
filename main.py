@@ -1642,3 +1642,46 @@ async def debug_groq():
             "error_message": str(e),
             "traceback": traceback.format_exc()
         }
+
+class UpgradeUserRequest(BaseModel):
+    username: str
+    plan: str
+
+@app.get("/admin/users")
+async def admin_get_users(username: str = Depends(get_current_user)):
+    if username != "iamthecreator":
+        raise HTTPException(status_code=403, detail="Forbidden: Admin access only.")
+    try:
+        async with aiosqlite.connect("checkpoints.db") as conn:
+            async with conn.execute("SELECT username, email, auth_provider, plan, created_at FROM users") as cursor:
+                rows = await cursor.fetchall()
+                users = []
+                for r in rows:
+                    users.append({
+                        "username": r[0],
+                        "email": r[1],
+                        "auth_provider": r[2],
+                        "plan": r[3],
+                        "created_at": r[4]
+                    })
+                return {"users": users}
+    except Exception as e:
+        logger.error("Admin user fetch error: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to fetch users")
+
+@app.post("/admin/upgrade-user")
+async def admin_upgrade_user(req: UpgradeUserRequest, username: str = Depends(get_current_user)):
+    if username != "iamthecreator":
+        raise HTTPException(status_code=403, detail="Forbidden: Admin access only.")
+    
+    if req.plan not in ["free", "pro"]:
+        raise HTTPException(status_code=400, detail="Invalid plan type")
+        
+    try:
+        async with aiosqlite.connect("checkpoints.db") as conn:
+            await conn.execute("UPDATE users SET plan = ? WHERE username = ?", (req.plan, req.username))
+            await conn.commit()
+            return {"status": "success", "message": f"User {req.username} upgraded to {req.plan}"}
+    except Exception as e:
+        logger.error("Admin user upgrade error: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to upgrade user")
