@@ -367,6 +367,7 @@ async def fetch_player_and_live_matches(query: str):
 tools = [get_historical_context, fetch_player_and_live_matches, fetch_live_web]
 tool_node = ToolNode(tools)
 expert_llm_with_tools = expert_llm.bind_tools(tools)
+fast_router_llm_with_tools = fast_router_llm.bind_tools(tools)
 
 STRICT_SYSTEM_PROMPT = """
 You are a LIVE Cricket Data Engine. TODAY'S DATE: March 31, 2026.
@@ -519,8 +520,8 @@ async def expert_node(state: AgentState):
         answer = await expert_llm_with_tools.ainvoke(messages)
     except Exception as e:
         logger.error("Expert LLM invocation failed: %s", e)
-        # Fallback to fast_router_llm (without tools) to prevent a 500 crash
-        answer = await fast_router_llm.ainvoke(messages)
+        # Fallback to fast_router_llm WITH tools to prevent a 500 crash on tool history
+        answer = await fast_router_llm_with_tools.ainvoke(messages)
 
     if current_retries >= 1 and hasattr(answer, "tool_calls") and answer.tool_calls:
         logger.warning("Rescue operation: 70B failed, falling back to 8B model")
