@@ -1140,12 +1140,23 @@ async def ask(user_prompt: str, session_id: Optional[str] = None, local_date: Op
 
         return {"response": final_text, "session_id": sid, "route": route_used}
     except Exception as e:
-        logger.error("AI Engine error: %s", e, exc_info=True)
+        import traceback
+        tb_str = traceback.format_exc()
+        logger.error("AI Engine error: %s\n%s", e, tb_str)
+        # Save error to redis for remote debugging
+        import asyncio
+        asyncio.create_task(redis_client.setex("debug_last_error", 3600, tb_str))
+        
         return {
             "response": "Error processing request.",
             "session_id": sid,
             "route": "ERROR"
         }
+
+@app.get("/debug-logs")
+async def get_debug_logs():
+    error = await redis_client.get("debug_last_error")
+    return {"last_error": error.decode('utf-8') if error else "No recent errors."}
 
 
 @app.get("/history/{session_id}")
