@@ -319,6 +319,7 @@ wiki = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())
 
 @tool
 def get_historical_context(query: str):
+    """Search Wikipedia for historical cricket facts."""
     try:
         return wiki.invoke(f"{query} cricket")
     except Exception as e:
