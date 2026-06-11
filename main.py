@@ -259,7 +259,7 @@ fast_router_llm = ChatGroq(
 
 expert_llm = ChatGroq(
     temperature=0.0,
-    model_name="llama-3.3-70b-versatile",
+    model_name="llama-3.1-70b-versatile",
     api_key=GROQ_API_KEY
 )
 
@@ -514,7 +514,13 @@ async def expert_node(state: AgentState):
         )
 
     messages = [SystemMessage(content=custom_prompt)] + state["messages"]
-    answer = await expert_llm_with_tools.ainvoke(messages)
+    
+    try:
+        answer = await expert_llm_with_tools.ainvoke(messages)
+    except Exception as e:
+        logger.error("Expert LLM invocation failed: %s", e)
+        # Fallback to fast_router_llm (without tools) to prevent a 500 crash
+        answer = await fast_router_llm.ainvoke(messages)
 
     if current_retries >= 1 and hasattr(answer, "tool_calls") and answer.tool_calls:
         logger.warning("Rescue operation: 70B failed, falling back to 8B model")
