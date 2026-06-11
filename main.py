@@ -1274,17 +1274,19 @@ async def get_scores(username: str = Depends(get_current_user)):
             scores = []
             for s in match.get("score", []):
                 scores.append({
-                    "score": f"{s.get('r', 0)}/{s.get('w', 0)}",
-                    "overs": str(s.get('o', 0))
+                    "inning": s.get("inning", "Score"),
+                    "r": s.get("r", 0),
+                    "w": s.get("w", 0),
+                    "o": s.get("o", 0)
                 })
             
             live_matches.append({
                 "id": match.get("id"),
-                "title": match.get("name"),
-                "state": match.get("status"),
+                "name": match.get("name"),
+                "status": match.get("status"),
                 "teams": match.get("teams", []),
                 "teamInfo": match.get("teamInfo", []),
-                "scores": scores
+                "score": scores
             })
 
         return {"matches": live_matches}
@@ -1324,8 +1326,10 @@ async def get_scorecard(match_id: str, username: str = Depends(get_current_user)
         scores = []
         for s in match_data.get("score", []):
             scores.append({
-                "score": f"{s.get('r', 0)}/{s.get('w', 0)}",
-                "overs": str(s.get('o', 0))
+                "inning": s.get("inning", "Score"),
+                "r": s.get("r", 0),
+                "w": s.get("w", 0),
+                "o": s.get("o", 0)
             })
 
         team_info = match_data.get("teamInfo", [])
