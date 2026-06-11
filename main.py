@@ -1367,8 +1367,10 @@ async def get_top_news(t: Optional[float] = None):
         try:
             raw = web_search.invoke("latest cricket headlines March 2026")
             prompt = (
-                "List 5 short cricket headlines separated by ' | '. "
-                "No intros, no fluff. Just headlines."
+                "Write 5 distinct, informative one-sentence news updates about recent cricket events or matches. "
+                "Each sentence should tell a complete piece of news. "
+                "Separate each sentence with ' | '. "
+                "No intros, no fluff, just the 5 sentences separated by |."
             )
             news_text = (
                 await fast_router_llm.ainvoke(f"{prompt} Data: {raw}")
