@@ -1259,109 +1259,37 @@ async def get_scores(username: str = Depends(get_current_user)):
             status_code=403,
             detail="Signup to access the live scoreboard"
         )
-    url = "https://www.cricbuzz.com/cricket-match/live-scores"
-    client = get_http_client()
     try:
-        r = await client.get(
-            url,
-            headers={"User-Agent": "Mozilla/5.0"},
-            timeout=10.0
-        )
-        if r.status_code != 200:
+        url = f"https://api.cricapi.com/v1/currentMatches?apikey={CRICKET_API_KEY}&offset=0"
+        client = get_http_client()
+        r = await client.get(url, timeout=10.0)
+        data = r.json()
+        
+        if data.get("status") != "success":
+            logger.error("CricAPI live matches failed: %s", data)
             return {"matches": []}
 
-        soup = bs4.BeautifulSoup(r.text, 'html.parser')
-        match_cards = soup.find_all(
-            'div',
-            class_='cb-mtch-lst cb-col cb-col-100 cb-tms-itm'
-        )
         live_matches = []
-
-        for card in match_cards:
-            status_div = card.find('div', class_='cb-text-complete')
-            if status_div:
-                continue
-
-            link_tag = card.find('a', class_='text-hvr-underline')
-            if not link_tag or 'live-cricket-scores' not in link_tag['href']:
-                continue
-
-            match_id = link_tag['href'].split('/')[2]
-            title = link_tag.get('title', '').strip()
-
-            img_tags = card.find_all('img')
-            for img in img_tags:
-                src = img.get('src', '')
-                if 'flag' in src or 'teams' in src:
-                    alt = img.get('alt', '').lower()
-                    if src.startswith('//'):
-                        src = 'https:' + src
-                    TEAM_IMAGE_CACHE[alt] = src
-
-            state_div = card.find(
-                'div',
-                class_='cb-scr-wckt-bat-lbl cb-clscr-bg-live'
-            )
-            state = state_div.text.strip() if state_div else "Live"
-
-            teams_div = card.find_all('div', class_='cb-hmscg-tm-nm')
-            teams = [t.text.strip() for t in teams_div]
-
-            scores_div = card.find_all(
-                'div',
-                class_='cb-col-50 cb-lst-tbl-sm text-right text-bold'
-            )
+        for match in data.get("data", []):
             scores = []
-            for s in scores_div:
-                scores.append(s.text.strip())
-
-            t1_score = scores[0] if len(scores) > 0 else "-"
-            t2_score = scores[1] if len(scores) > 1 else "-"
-
-            t1_overs = "-"
-            t2_overs = "-"
-            if "(" in t1_score:
-                parts = t1_score.split("(")
-                t1_score = parts[0].strip()
-                t1_overs = parts[1].replace(")", "").strip()
-            if "(" in t2_score:
-                parts = t2_score.split("(")
-                t2_score = parts[0].strip()
-                t2_overs = parts[1].replace(")", "").strip()
-
-            t1_name = teams[0] if len(teams) > 0 else "-"
-            t2_name = teams[1] if len(teams) > 1 else "-"
-
-            def get_flag(t_name):
-                t_name_l = t_name.lower()
-                if t_name_l in TEAM_IMAGE_CACHE:
-                    return TEAM_IMAGE_CACHE[t_name_l]
-                for k, f_url in FALLBACK_FLAGS.items():
-                    if k in t_name_l:
-                        return f_url
-                return ""
-
-            t1_img = get_flag(t1_name)
-            t2_img = get_flag(t2_name)
-
+            for s in match.get("score", []):
+                scores.append({
+                    "score": f"{s.get('r', 0)}/{s.get('w', 0)}",
+                    "overs": str(s.get('o', 0))
+                })
+            
             live_matches.append({
-                "id": match_id,
-                "title": title,
-                "state": state,
-                "teams": [t1_name, t2_name],
-                "teamInfo": [
-                    {"name": t1_name, "img": t1_img},
-                    {"name": t2_name, "img": t2_img}
-                ],
-                "scores": [
-                    {"score": t1_score, "overs": t1_overs},
-                    {"score": t2_score, "overs": t2_overs}
-                ]
+                "id": match.get("id"),
+                "title": match.get("name"),
+                "state": match.get("status"),
+                "teams": match.get("teams", []),
+                "teamInfo": match.get("teamInfo", []),
+                "scores": scores
             })
 
         return {"matches": live_matches}
     except Exception as e:
-        logger.error("Live matches scraping error: %s", e, exc_info=True)
+        logger.error("Live matches CricAPI error: %s", e, exc_info=True)
         return {"matches": []}
 
 
@@ -1373,138 +1301,52 @@ async def get_scorecard(match_id: str, username: str = Depends(get_current_user)
             status_code=403,
             detail="Signup to access the live scoreboard"
         )
-    if not match_id.isdigit():
-        raise HTTPException(status_code=400, detail="Invalid match ID format")
     try:
-        data = await v2_fetch_scorecard_data_async(match_id)
-        if not data:
-            return {"error": "Failed to fetch scorecard from Cricbuzz"}
+        url = f"https://api.cricapi.com/v1/match_scorecard?apikey={CRICKET_API_KEY}&id={match_id}"
+        client = get_http_client()
+        r = await client.get(url, timeout=10.0)
+        data = r.json()
 
-        mh = data.get('matchHeader', {})
-        score_cards = data.get('scoreCard', [])
+        if data.get("status") != "success":
+            return {"error": "Failed to fetch scorecard from CricAPI"}
 
-        t1 = mh.get('team1', {})
-        t2 = mh.get('team2', {})
-        teams = [t1.get('name', ''), t2.get('name', '')]
-
-        def get_flag(team_name, short_name):
-            t_name_l = team_name.lower()
-            s_name_l = short_name.lower()
-            if t_name_l in TEAM_IMAGE_CACHE:
-                return TEAM_IMAGE_CACHE[t_name_l]
-            if s_name_l in TEAM_IMAGE_CACHE:
-                return TEAM_IMAGE_CACHE[s_name_l]
-            for k, f_url in FALLBACK_FLAGS.items():
-                if k in t_name_l:
-                    return f_url
-            return ""
-
-        team_info = [
-            {
-                "name": t1.get('name', ''),
-                "shortname": t1.get('shortName', ''),
-                "img": get_flag(t1.get('name', ''), t1.get('shortName', ''))
-            },
-            {
-                "name": t2.get('name', ''),
-                "shortname": t2.get('shortName', ''),
-                "img": get_flag(t2.get('name', ''), t2.get('shortName', ''))
-            }
-        ]
+        match_data = data.get("data", {})
+        
+        # Format strictly to what frontend expects
+        formatted_scorecard = []
+        for inning in match_data.get("scorecard", []):
+            formatted_scorecard.append({
+                "inning": inning.get("inning", ""),
+                "batting": inning.get("batting", []),
+                "bowling": inning.get("bowling", [])
+            })
 
         scores = []
-        for sc in score_cards:
-            bat_team = sc.get('batTeamDetails', {})
-            sd = sc.get('scoreDetails', {})
+        for s in match_data.get("score", []):
             scores.append({
-                "inning": bat_team.get('batTeamShortName', ''),
-                "r": sd.get('runs', 0),
-                "w": sd.get('wickets', 0),
-                "o": sd.get('overs', 0.0)
+                "score": f"{s.get('r', 0)}/{s.get('w', 0)}",
+                "overs": str(s.get('o', 0))
             })
 
-        scorecard_list = []
-        for sc in score_cards:
-            bat_team = sc.get('batTeamDetails', {})
-            bowl_team = sc.get('bowlTeamDetails', {})
-
-            batting_list = []
-            batsmen_data = bat_team.get('batsmenData', {})
-            try:
-                sorted_batsmen = sorted(
-                    batsmen_data.items(),
-                    key=lambda x: int(x[0].split('_')[1])
-                )
-            except Exception:
-                sorted_batsmen = sorted(batsmen_data.items())
-
-            for k, b in sorted_batsmen:
-                out_desc = b.get('outDesc', '')
-                dismissal = "not out"
-                if out_desc and out_desc.lower() != 'batting':
-                    dismissal = out_desc
-
-                batting_list.append({
-                    "batsman": {"name": b.get('batName', '')},
-                    "dismissal": dismissal,
-                    "dismissal-text": (
-                        out_desc if out_desc.lower() != 'batting' else ''
-                    ),
-                    "r": b.get('runs', 0),
-                    "b": b.get('balls', 0),
-                    "4s": b.get('fours', 0),
-                    "6s": b.get('sixes', 0),
-                    "sr": b.get('strikeRate', 0.0)
-                })
-
-            bowling_list = []
-            bowlers_data = bowl_team.get('bowlersData', {})
-            try:
-                sorted_bowlers = sorted(
-                    bowlers_data.items(),
-                    key=lambda x: int(x[0].split('_')[1])
-                )
-            except Exception:
-                sorted_bowlers = sorted(bowlers_data.items())
-
-            for k, bw in sorted_bowlers:
-                bowling_list.append({
-                    "bowler": {"name": bw.get('bowlName', '')},
-                    "o": bw.get('overs', 0.0),
-                    "m": bw.get('maidens', 0),
-                    "r": bw.get('runs', 0),
-                    "w": bw.get('wickets', 0),
-                    "eco": bw.get('economy', 0.0)
-                })
-
-            scorecard_list.append({
-                "inning": f"{bat_team.get('batTeamName', '')} Innings",
-                "batting": batting_list,
-                "bowling": bowling_list
-            })
-
-        toss_res = mh.get('tossResults', {})
+        team_info = match_data.get("teamInfo", [])
+        if not team_info and len(match_data.get("teams", [])) >= 2:
+            team_info = [
+                {"name": match_data["teams"][0], "shortname": match_data["teams"][0][:3], "img": ""},
+                {"name": match_data["teams"][1], "shortname": match_data["teams"][1][:3], "img": ""}
+            ]
 
         return {
-            "id": match_id,
-            "name": (
-                f"{t1.get('name', '')} vs {t2.get('name', '')}, "
-                f"{mh.get('matchDescription', '')}"
-            ),
-            "status": mh.get('status', ''),
-            "matchType": mh.get('matchFormat', ''),
-            "venue": mh.get('venue', {}).get('name', ''),
-            "date": "",
-            "teams": teams,
+            "teams": match_data.get("teams", []),
             "teamInfo": team_info,
+            "status": match_data.get("status", ""),
             "score": scores,
-            "tossWinner": toss_res.get('tossWinnerName', ''),
-            "tossChoice": toss_res.get('decision', ''),
-            "scorecard": scorecard_list
+            "tossWinner": match_data.get("tossWinner", ""),
+            "tossChoice": match_data.get("tossChoice", ""),
+            "scorecard": formatted_scorecard
         }
     except Exception as e:
-        logger.error("Scorecard error: %s", e, exc_info=True)
-        return {"error": "Failed to load scorecard from Cricbuzz"}
+        logger.error("Scorecard API error: %s", e, exc_info=True)
+        return {"error": "Failed to load scorecard"}
 
 
 news_cache = {"data": None, "time": 0}
