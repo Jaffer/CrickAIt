@@ -319,8 +319,11 @@ wiki = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())
 
 @tool
 def get_historical_context(query: str):
-    """Search Wikipedia for historical cricket facts."""
-    return wiki.invoke(f"{query} cricket")
+    try:
+        return wiki.invoke(f"{query} cricket")
+    except Exception as e:
+        logger.error("Wikipedia search failed: %s", e)
+        return f"Wikipedia search failed: {e}"
 
 
 @tool
@@ -373,6 +376,7 @@ CRITICAL INSTRUCTIONS:
    in chat history, DO NOT call tools. Just reformulate based on history.
 2. ONE SEARCH ONLY: If you need new data, search once, then answer immediately.
 3. NO META-TALK: Never say "Based on search..." or "Here is what...". Just facts.
+4. STRICT DOMAIN LOCK: You must ONLY answer questions related to the cricket industry, cricket matches, cricket players, rules, history, or cricket boards (e.g. BCCI, ICC). If the user asks about anything else (e.g. politics, prime ministers, geography, coding), politely decline and remind them you are a cricket AI.
 """
 
 
@@ -478,6 +482,7 @@ async def router_node(state: AgentState):
         If they ask what their favorite team or player is, look at memory.
         If memory shows acronym like 'CSK' or 'RCB', they are IPL teams.
         If empty, politely tell them they haven't saved any yet.
+        STRICT DOMAIN LOCK: ONLY answer questions about the cricket industry, cricket boards, rules, or players. Decline all other topics.
         """
         fast_answer = await fast_router_llm.ainvoke(
             [SystemMessage(content=system_instruction)] + state["messages"]
