@@ -564,22 +564,52 @@
                 <button class="close-modal" onclick="closeModal('admin-modal')">&times;</button>
             </div>
             <div class="modal-body">
-                <div style="overflow-x: auto; margin-top: 1rem;">
-                    <table id="admin-users-table" style="width: 100%; border-collapse: collapse; text-align: left; color: #E0E0E0; font-size: 0.9rem;">
-                        <thead>
-                            <tr style="border-bottom: 1px solid #333; background: #1A1A1A;">
-                                <th style="padding: 10px;">Username</th>
-                                <th style="padding: 10px;">Email</th>
-                                <th style="padding: 10px;">Provider</th>
-                                <th style="padding: 10px;">Plan</th>
-                                <th style="padding: 10px;">Created At</th>
-                                <th style="padding: 10px;">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="admin-users-body">
-                            <!-- Populated by JS -->
-                        </tbody>
-                    </table>
+                <div class="admin-tabs" style="display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                    <button class="settings-btn" onclick="switchAdminTab('users')"><i class="fa-solid fa-users"></i> Manage Users</button>
+                    <button class="settings-btn" onclick="switchAdminTab('notify')"><i class="fa-solid fa-envelope-circle-check"></i> Send Bug Fixed Email</button>
+                </div>
+
+                <!-- Tab 1: Users -->
+                <div id="admin-tab-users" class="admin-tab-content">
+                    <div style="overflow-x: auto;">
+                        <table id="admin-users-table" style="width: 100%; border-collapse: collapse; text-align: left; color: #E0E0E0; font-size: 0.9rem;">
+                            <thead>
+                                <tr style="border-bottom: 1px solid #333; background: #1A1A1A;">
+                                    <th style="padding: 10px;">Username</th>
+                                    <th style="padding: 10px;">Email</th>
+                                    <th style="padding: 10px;">Provider</th>
+                                    <th style="padding: 10px;">Plan</th>
+                                    <th style="padding: 10px;">Created At</th>
+                                    <th style="padding: 10px;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-users-body">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tab 2: Notify Fixed -->
+                <div id="admin-tab-notify" class="admin-tab-content" style="display: none; max-width: 500px;">
+                    <form id="admin-notify-form" onsubmit="sendBugFixedNotification(event)">
+                        <div class="input-group">
+                            <label for="notify-email">User Email</label>
+                            <input type="email" id="notify-email" class="modern-input" placeholder="user@example.com" required>
+                        </div>
+                        <div class="input-group" style="margin-top: 12px;">
+                            <label for="notify-name">User Name (Optional)</label>
+                            <input type="text" id="notify-name" class="modern-input" placeholder="e.g. John">
+                        </div>
+                        <div class="input-group" style="margin-top: 12px;">
+                            <label for="notify-subject">Bug Subject / Description</label>
+                            <input type="text" id="notify-subject" class="modern-input" placeholder="e.g. Scorecard not loading" required>
+                        </div>
+                        <div id="admin-notify-status" style="margin-top: 10px; font-size: 0.88rem; min-height: 20px;"></div>
+                        <button type="submit" class="auth-submit-btn" style="margin-top: 14px;" id="admin-notify-btn">
+                            <i class="fa-solid fa-paper-plane"></i> Send Fixed Notification
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>

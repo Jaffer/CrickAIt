@@ -1661,3 +1661,56 @@ async function submitBugReport(event) {
         btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send Report';
     }
 }
+
+// --- ADMIN BUG RESOLUTION EMAIL TRIGGER ---
+
+function switchAdminTab(tab) {
+    document.querySelectorAll('.admin-tab-content').forEach(el => el.style.display = 'none');
+    if (tab === 'users') {
+        document.getElementById('admin-tab-users').style.display = 'block';
+    } else if (tab === 'notify') {
+        document.getElementById('admin-tab-notify').style.display = 'block';
+    }
+}
+
+async function sendBugFixedNotification(event) {
+    event.preventDefault();
+    const email = document.getElementById('notify-email').value.trim();
+    const name = document.getElementById('notify-name').value.trim() || 'User';
+    const subject = document.getElementById('notify-subject').value.trim();
+    const btn = document.getElementById('admin-notify-btn');
+    const status = document.getElementById('admin-notify-status');
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending...';
+    status.textContent = '';
+
+    try {
+        // We use the EmailJS template ID 'template_fixed_notification'
+        // Please make sure you create this template in EmailJS!
+        await emailjs.send("service_dvblxgd", "template_fixed_notification", {
+            to_email: email,
+            to_name: name,
+            bug_subject: subject
+        });
+        
+        status.innerHTML = '<span style="color: #2ecc71;"><i class="fa-solid fa-circle-check"></i> Bug resolution email sent successfully!</span>';
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> Sent!';
+        
+        // Reset form
+        document.getElementById('notify-email').value = '';
+        document.getElementById('notify-name').value = '';
+        document.getElementById('notify-subject').value = '';
+        
+        setTimeout(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send Fixed Notification';
+            status.textContent = '';
+        }, 3000);
+    } catch (e) {
+        console.error("EmailJS send failed:", e);
+        status.innerHTML = '<span style="color: #ff4b4b;"><i class="fa-solid fa-triangle-exclamation"></i> Failed to send email via EmailJS. Check console/config.</span>';
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send Fixed Notification';
+    }
+}
