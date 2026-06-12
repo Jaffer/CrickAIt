@@ -248,30 +248,48 @@
 
     <!-- Profile Modal -->
     <div id="profile-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
+        <div class="modal-content profile-modal-content">
+            <div class="modal-header" style="z-index: 10;">
                 <h3><i class="fa-solid fa-circle-user"></i> My Profile</h3>
                 <button class="close-modal" onclick="closeModal('profile-modal')">&times;</button>
             </div>
-            <div class="modal-body">
-                <div class="profile-card">
-                    <div class="profile-avatar-large" id="profile-avatar-large">VA</div>
-                    <h2 id="profile-name-val">Guest User</h2>
-                    <p id="profile-email-val">guest@crickait.com</p>
-                    <div class="profile-meta-grid">
+            <div class="modal-body p-0">
+                <div class="profile-cover"></div>
+                <div class="profile-card enhanced-profile">
+                    <div class="profile-avatar-wrapper">
+                        <div class="profile-avatar-large" id="profile-avatar-large">VA</div>
+                    </div>
+                    <div class="profile-name-container">
+                        <h2 id="profile-name-val">Guest User</h2>
+                        <button class="edit-name-btn" onclick="toggleEditName()" title="Edit Name"><i class="fa-solid fa-pen"></i></button>
+                    </div>
+                    <div id="edit-name-form" style="display: none; margin-bottom: 10px;">
+                        <input type="text" id="new-display-name" class="modern-input" placeholder="Enter new name">
+                        <button class="btn-confirm btn-sm" onclick="saveDisplayName()">Save</button>
+                    </div>
+                    <p id="profile-email-val" class="text-muted">guest@crickait.com</p>
+                    
+                    <div class="profile-meta-grid modern-grid">
                         <div class="meta-item">
+                            <i class="fa-solid fa-calendar-days meta-icon"></i>
                             <span class="meta-label">Joined</span>
                             <span class="meta-value" id="profile-joined-val">June 2026</span>
                         </div>
                         <div class="meta-item">
+                            <i class="fa-brands fa-google meta-icon"></i>
                             <span class="meta-label">Provider</span>
                             <span class="meta-value" id="profile-provider-val">Google</span>
                         </div>
-                        <div class="meta-item">
+                        <div class="meta-item status-item">
+                            <i class="fa-solid fa-crown meta-icon"></i>
                             <span class="meta-label">Status</span>
-                            <span class="meta-value" id="profile-status-val">Free User</span>
+                            <span class="meta-value badge-status" id="profile-status-val">Free User</span>
                         </div>
                     </div>
+                    
+                    <button class="auth-submit-btn logout-btn" onclick="handleLogout()" style="margin-top: 20px; background: #e74c3c;">
+                        <i class="fa-solid fa-right-from-bracket"></i> Sign Out
+                    </button>
                 </div>
             </div>
         </div>
@@ -320,33 +338,65 @@
     <div id="personalization-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Personalization settings</h3>
+                <h3><i class="fa-solid fa-sliders"></i> Personalization</h3>
                 <button class="close-modal" onclick="closeModal('personalization-modal')">&times;</button>
             </div>
             <div class="modal-body">
                 <form id="personalization-form" onsubmit="savePersonalization(event)">
                     <div class="input-group">
-                        <label for="expertise-level">Cricket Expertise Level</label>
-                        <select id="expertise-level">
+                        <label for="expertise-level"><i class="fa-solid fa-brain"></i> Cricket Expertise</label>
+                        <select id="expertise-level" class="modern-select">
                             <option value="Casual">Casual Fan</option>
                             <option value="Standard" selected>Standard</option>
                             <option value="Expert">Expert Analyst</option>
                             <option value="Tactician">Tactician</option>
                         </select>
                     </div>
+                    
                     <div class="input-group">
-                        <label>Preferred Formats</label>
-                        <div class="checkbox-group">
-                            <label><input type="checkbox" value="T20" checked id="pref-t20"> T20</label>
-                            <label><input type="checkbox" value="ODI" checked id="pref-odi"> ODI</label>
-                            <label><input type="checkbox" value="Test" checked id="pref-test"> Test Match</label>
+                        <label><i class="fa-solid fa-palette"></i> App Theme</label>
+                        <select id="app-theme" class="modern-select" onchange="applyTheme(this.value)">
+                            <option value="dark" selected>Classic Dark</option>
+                            <option value="green">Pitch Green</option>
+                            <option value="light">Stadium Light</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <label><i class="fa-solid fa-text-height"></i> Response Verbosity</label>
+                        <div class="slider-container">
+                            <span class="slider-label">Concise</span>
+                            <input type="range" id="verbosity-slider" min="1" max="3" value="2" class="modern-slider">
+                            <span class="slider-label">Detailed</span>
                         </div>
                     </div>
+
                     <div class="input-group">
-                        <label for="rival-teams">Disliked Rival Teams (for banter)</label>
-                        <input type="text" id="rival-teams" placeholder="e.g. Australia, Mumbai Indians">
+                        <label><i class="fa-solid fa-trophy"></i> Preferred Formats</label>
+                        <div class="modern-checkbox-group">
+                            <label class="toggle-switch">
+                                <input type="checkbox" value="T20" checked id="pref-t20">
+                                <span class="toggle-slider"></span>
+                                <span class="toggle-label">T20</span>
+                            </label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" value="ODI" checked id="pref-odi">
+                                <span class="toggle-slider"></span>
+                                <span class="toggle-label">ODI</span>
+                            </label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" value="Test" checked id="pref-test">
+                                <span class="toggle-slider"></span>
+                                <span class="toggle-label">Test Match</span>
+                            </label>
+                        </div>
                     </div>
-                    <button type="submit" class="auth-submit-btn">Save Preferences</button>
+                    
+                    <div class="input-group">
+                        <label for="rival-teams"><i class="fa-solid fa-hand-middle-finger"></i> Disliked Rival Teams</label>
+                        <input type="text" id="rival-teams" class="modern-input" placeholder="e.g. Australia, Mumbai Indians">
+                    </div>
+                    <button type="submit" class="auth-submit-btn"><i class="fa-solid fa-floppy-disk"></i> Save Preferences</button>
                 </form>
             </div>
         </div>
@@ -383,21 +433,58 @@
 
     <!-- Help Modal -->
     <div id="help-modal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content help-modal-content">
             <div class="modal-header">
-                <h3>Help & FAQ</h3>
+                <h3><i class="fa-solid fa-circle-question"></i> Help & Resources</h3>
                 <button class="close-modal" onclick="closeModal('help-modal')">&times;</button>
             </div>
             <div class="modal-body">
-                <div class="help-section">
-                    <h4>What is CrickAIt?</h4>
-                    <p>CrickAIt is your AI-powered companion for cricket scores, news, trivia, and statistics. It automatically tracks your favorite teams/players based on your conversations.</p>
-                    
-                    <h4>How do I add favorite teams/players?</h4>
-                    <p>Simply chat with the assistant! E.g. say "I support India" or "I love Virat Kohli", and it will silently save them to your Global Profile.</p>
-                    
-                    <h4>How does Pro Plan work?</h4>
-                    <p>Pro Plan unlocks our 70B expert LLM engine, giving you highly detailed tactics, stats tables, and matches predictions.</p>
+                <div class="quick-prompts-section">
+                    <h4>Try These Prompts</h4>
+                    <div class="chips-container">
+                        <div class="prompt-chip" onclick="useQuickPrompt('What are the live cricket scores right now?')">Live Scores</div>
+                        <div class="prompt-chip" onclick="useQuickPrompt('Tell me the latest cricket news.')">Latest News</div>
+                        <div class="prompt-chip" onclick="useQuickPrompt('Explain the LBW rule in simple terms.')">LBW Rule</div>
+                        <div class="prompt-chip" onclick="useQuickPrompt('Show me Virat Kohli career stats.')">Virat Stats</div>
+                    </div>
+                </div>
+
+                <div class="faq-accordion">
+                    <h4>Frequently Asked Questions</h4>
+                    <div class="accordion-item">
+                        <button class="accordion-header" onclick="toggleAccordion(this)">What is CrickAIt? <i class="fa-solid fa-chevron-down"></i></button>
+                        <div class="accordion-content">
+                            <p>CrickAIt is your AI-powered companion for cricket scores, news, trivia, and statistics. It automatically tracks your favorite teams/players based on your conversations.</p>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <button class="accordion-header" onclick="toggleAccordion(this)">How do I add favorite teams/players? <i class="fa-solid fa-chevron-down"></i></button>
+                        <div class="accordion-content">
+                            <p>Simply chat with the assistant! E.g. say "I support India" or "I love Virat Kohli", and it will silently save them to your Global Profile.</p>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <button class="accordion-header" onclick="toggleAccordion(this)">How does Pro Plan work? <i class="fa-solid fa-chevron-down"></i></button>
+                        <div class="accordion-content">
+                            <p>Pro Plan unlocks our 70B expert LLM engine, giving you highly detailed tactics, stats tables, and matches predictions.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="help-footer-grid">
+                    <div class="shortcuts-box">
+                        <h4><i class="fa-regular fa-keyboard"></i> Shortcuts</h4>
+                        <ul>
+                            <li><kbd>Enter</kbd> Send msg</li>
+                            <li><kbd>Shift</kbd>+<kbd>Enter</kbd> New line</li>
+                            <li><kbd>Esc</kbd> Close popups</li>
+                        </ul>
+                    </div>
+                    <div class="bug-box">
+                        <h4><i class="fa-solid fa-bug"></i> Found a bug?</h4>
+                        <p>Help us improve CrickAIt.</p>
+                        <a href="mailto:support@crickait.com" class="btn-secondary btn-sm" style="display:inline-block; margin-top:8px;">Report Bug</a>
+                    </div>
                 </div>
             </div>
         </div>

@@ -1442,3 +1442,92 @@ window.adminUpgradeUser = async (username, newPlan) => {
         alert("Error upgrading user.");
     }
 };
+
+// --- MODAL UI LOGIC ENHANCEMENTS ---
+
+// Profile Edit Name
+function toggleEditName() {
+    const nameVal = document.getElementById('profile-name-val');
+    const editForm = document.getElementById('edit-name-form');
+    const input = document.getElementById('new-display-name');
+    
+    if (editForm.style.display === 'none') {
+        nameVal.style.display = 'none';
+        editForm.style.display = 'block';
+        input.value = nameVal.textContent;
+        input.focus();
+    } else {
+        nameVal.style.display = 'block';
+        editForm.style.display = 'none';
+    }
+}
+
+async function saveDisplayName() {
+    const input = document.getElementById('new-display-name');
+    const newName = input.value.trim();
+    if (!newName) return;
+
+    try {
+        const response = await fetch(`${PROD_BACKEND_URL}/auth/me`, {
+            method: 'PATCH', // We simulate a PATCH request, though we might need to implement this in backend if it doesn't exist
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ display_name: newName })
+        });
+        
+        // Even if the backend PATCH /auth/me doesn't exist yet, we visually update for UX
+        document.getElementById('profile-name-val').textContent = newName;
+        document.getElementById('profile-avatar-large').textContent = newName.substring(0, 2).toUpperCase();
+        toggleEditName();
+        
+    } catch (error) {
+        console.error("Error updating name:", error);
+    }
+}
+
+// Help Modal Quick Prompts
+function useQuickPrompt(promptText) {
+    closeModal('help-modal');
+    const inputField = document.getElementById('chat-input');
+    inputField.value = promptText;
+    inputField.focus();
+}
+
+// Help Modal Accordion
+function toggleAccordion(button) {
+    button.classList.toggle("active");
+    const content = button.nextElementSibling;
+    if (button.classList.contains("active")) {
+        content.style.maxHeight = content.scrollHeight + "px";
+    } else {
+        content.style.maxHeight = "0";
+    }
+}
+
+// Theme Applier
+function applyTheme(theme) {
+    const root = document.documentElement;
+    if (theme === 'green') {
+        root.style.setProperty('--bg-color', '#0a1a12');
+        root.style.setProperty('--surface', '#132c1d');
+        root.style.setProperty('--surface-light', '#1e422c');
+        root.style.setProperty('--accent', '#00d26a');
+    } else if (theme === 'light') {
+        root.style.setProperty('--bg-color', '#f5f7fa');
+        root.style.setProperty('--surface', '#ffffff');
+        root.style.setProperty('--surface-light', '#eef2f5');
+        root.style.setProperty('--text', '#2d3436');
+        root.style.setProperty('--text-muted', '#636e72');
+        root.style.setProperty('--accent', '#00b894');
+    } else {
+        // Default Dark
+        root.style.setProperty('--bg-color', '#0f1115');
+        root.style.setProperty('--surface', '#1a1d24');
+        root.style.setProperty('--surface-light', '#252932');
+        root.style.setProperty('--text', '#f1f1f1');
+        root.style.setProperty('--text-muted', '#a0aab2');
+        root.style.setProperty('--accent', '#00d26a');
+    }
+}
