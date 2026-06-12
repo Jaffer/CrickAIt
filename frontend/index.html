@@ -249,10 +249,9 @@
     <!-- Profile Modal -->
     <div id="profile-modal" class="modal">
         <div class="modal-content profile-modal-content">
-            <div class="profile-cover-bar"></div>
-            <div class="modal-header">
-                <h3><i class="fa-solid fa-circle-user"></i> My Profile</h3>
-                <button class="close-modal" onclick="closeModal('profile-modal')">&times;</button>
+            <div class="profile-cover-bar">
+                <button class="close-modal cover-close-btn" onclick="closeModal('profile-modal')">&times;</button>
+                <div class="cover-title"><i class="fa-solid fa-circle-user"></i> My Profile</div>
             </div>
             <div class="modal-body">
                 <div class="profile-card enhanced-profile">
@@ -404,27 +403,56 @@
 
     <!-- Settings Modal -->
     <div id="settings-modal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width: 560px;">
             <div class="modal-header">
-                <h3>Settings</h3>
+                <h3><i class="fa-solid fa-gear"></i> Settings</h3>
                 <button class="close-modal" onclick="closeModal('settings-modal')">&times;</button>
             </div>
             <div class="modal-body">
+                <div class="settings-section-title">Chat</div>
+                <div class="settings-list">
+                    <div class="settings-item">
+                        <div class="item-text">
+                            <h4>Clear All Chat Sessions</h4>
+                            <p>Delete all your conversation history.</p>
+                        </div>
+                        <button class="settings-btn settings-btn-warn" onclick="handleClearAllChats()"><i class="fa-solid fa-trash-can"></i> Clear</button>
+                    </div>
+                    <div class="settings-item">
+                        <div class="item-text">
+                            <h4>Export Chat History</h4>
+                            <p>Download all your chats as a text file.</p>
+                        </div>
+                        <button class="settings-btn" onclick="handleExportChats()"><i class="fa-solid fa-file-arrow-down"></i> Export</button>
+                    </div>
+                </div>
+
+                <div class="settings-section-title">Profile</div>
                 <div class="settings-list">
                     <div class="settings-item">
                         <div class="item-text">
                             <h4>Clear Favorites Profile</h4>
-                            <p>Reset all extracted favorite teams and players.</p>
+                            <p>Reset all AI-extracted favorite teams and players.</p>
                         </div>
-                        <button class="btn-cancel" onclick="handleClearFavoritesProfile()">Reset</button>
+                        <button class="settings-btn settings-btn-warn" onclick="handleClearFavoritesProfile()"><i class="fa-solid fa-rotate-left"></i> Reset</button>
                     </div>
-                    <div class="settings-item divider"></div>
+                    <div class="settings-item">
+                        <div class="item-text">
+                            <h4>Change Password</h4>
+                            <p>Update your account login password.</p>
+                        </div>
+                        <button class="settings-btn" onclick="openModal('change-password-modal')"><i class="fa-solid fa-key"></i> Change</button>
+                    </div>
+                </div>
+
+                <div class="settings-section-title" style="color: #ff4b4b;">Danger Zone</div>
+                <div class="settings-list">
                     <div class="settings-item">
                         <div class="item-text">
                             <h4 style="color: #ff4b4b;">Delete Account</h4>
-                            <p>Permanently remove your account, sessions, and data.</p>
+                            <p>Permanently remove your account, sessions, and all data.</p>
                         </div>
-                        <button class="btn-confirm" style="background-color: #ff4b4b;" onclick="handleDeleteAccount()">Delete</button>
+                        <button class="settings-btn settings-btn-danger" onclick="handleDeleteAccount()"><i class="fa-solid fa-skull"></i> Delete</button>
                     </div>
                 </div>
             </div>
@@ -483,7 +511,7 @@
                     <div class="bug-box">
                         <h4><i class="fa-solid fa-bug"></i> Found a bug?</h4>
                         <p>Help us improve CrickAIt.</p>
-                        <a href="mailto:support@crickait.com" class="btn-secondary btn-sm" style="display:inline-block; margin-top:8px;">Report Bug</a>
+                        <a href="https://mail.google.com/mail/?view=cm&to=support@crickait.com&su=CrickAIt Bug Report" target="_blank" rel="noopener noreferrer" class="btn-secondary btn-sm" style="display:inline-block; margin-top:8px;"><i class="fa-solid fa-envelope"></i> Report Bug</a>
                     </div>
                 </div>
             </div>

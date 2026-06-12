@@ -1360,11 +1360,41 @@ async def get_scorecard(match_id: str, username: str = Depends(get_current_user)
     try:
         url = f"https://api.cricapi.com/v1/match_scorecard?apikey={CRICKET_API_KEY}&id={match_id}"
         client = get_http_client()
-        r = await client.get(url, timeout=10.0)
+        r = await client.get(url, timeout=12.0)
         data = r.json()
 
         if data.get("status") != "success":
-            return {"error": "Failed to fetch scorecard from CricAPI"}
+            # Log the reason so we can diagnose in Render logs
+            reason = data.get("reason", data.get("message", "unknown"))
+            logger.error("CricAPI scorecard failed for %s: status=%s reason=%s", match_id, data.get("status"), reason)
+            
+            # Fallback: try match_info endpoint which works on free tier
+            fallback_url = f"https://api.cricapi.com/v1/match_info?apikey={CRICKET_API_KEY}&id={match_id}"
+            r2 = await client.get(fallback_url, timeout=10.0)
+            data2 = r2.json()
+            
+            if data2.get("status") == "success":
+                match_data = data2.get("data", {})
+                scores = []
+                for s in match_data.get("score", []):
+                    scores.append({
+                        "inning": s.get("inning", "Score"),
+                        "r": s.get("r", 0),
+                        "w": s.get("w", 0),
+                        "o": s.get("o", 0)
+                    })
+                return {
+                    "teams": match_data.get("teams", []),
+                    "teamInfo": match_data.get("teamInfo", []),
+                    "status": match_data.get("status", ""),
+                    "score": scores,
+                    "tossWinner": match_data.get("tossWinner", ""),
+                    "tossChoice": match_data.get("tossChoice", ""),
+                    "scorecard": [],
+                    "note": "Detailed scorecard unavailable on current plan. Showing match summary."
+                }
+            
+            return {"error": f"Scorecard unavailable: {reason}"}
 
         match_data = data.get("data", {})
         

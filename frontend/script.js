@@ -857,7 +857,8 @@ function renderScorecard(data) {
         renderInning(scorecard[0]);
     } else {
         document.getElementById('sc-innings-tabs').innerHTML = '';
-        document.getElementById('sc-innings-content').innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-secondary);">Scorecard not yet available for this match.</div>';
+        const note = data.note || 'Detailed scorecard not yet available for this match.';
+        document.getElementById('sc-innings-content').innerHTML = `<div style="text-align:center; padding:30px; color:var(--text-secondary); font-size:0.9rem;"><i class="fa-solid fa-circle-info" style="font-size:2rem; color:var(--accent-color); margin-bottom:10px;"></i><br>${note}</div>`;
     }
 }
 
@@ -1554,4 +1555,37 @@ function applyTheme(theme) {
         root.style.setProperty('--text-muted', '#a0aab2');
         root.style.setProperty('--accent', '#00d26a');
     }
+}
+
+// --- SETTINGS MODAL: NEW ACTIONS ---
+
+async function handleClearAllChats() {
+    if (!confirm("Delete ALL your chat history? This cannot be undone.")) return;
+    try {
+        const res = await authenticatedFetch(`${API_URL}/sessions/clear-all`, { method: 'DELETE' });
+        if (res && res.ok) {
+            location.reload();
+        } else {
+            alert("Could not clear sessions. Please try again.");
+        }
+    } catch (e) {
+        // Fallback: just reload
+        location.reload();
+    }
+}
+
+function handleExportChats() {
+    const messages = document.querySelectorAll('.message-wrapper');
+    if (!messages.length) { alert("No chat history to export."); return; }
+    let text = `CrickAIt Chat Export\n${'='.repeat(40)}\n\n`;
+    messages.forEach(m => {
+        const isUser = m.classList.contains('user-message');
+        const content = m.querySelector('.message-content');
+        text += `${isUser ? 'You' : 'CrickAIt'}: ${content ? content.textContent.trim() : ''}\n\n`;
+    });
+    const blob = new Blob([text], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `crickait-chat-${new Date().toISOString().split('T')[0]}.txt`;
+    a.click();
 }
