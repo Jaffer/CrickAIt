@@ -1303,6 +1303,88 @@ async def v2_fetch_scorecard_data_async(match_id: str):
     return json.loads(json_str[brace_start:end + 1])
 
 
+live_scores_cache = {"data": None, "time": 0}
+
+async def fetch_live_scores_from_cricbuzz():
+    try:
+        url = "https://www.cricbuzz.com/cricket-match/live-scores"
+        client = get_http_client()
+        r = await client.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10.0)
+        if r.status_code != 200:
+            return []
+        soup = bs4.BeautifulSoup(r.text, 'html.parser')
+        
+        matches = []
+        # Find all match cards on the page
+        cards = soup.find_all('div', class_=re.compile(r'cb-lv-scrs-col|cb-col-100|cb-tms-itm'))
+        for card in cards:
+            link_tag = card.find('a', href=re.compile(r'/live-cricket-scores/'))
+            if not link_tag:
+                continue
+            href = link_tag['href']
+            # extract id, e.g. /live-cricket-scores/87622/ind-vs-aus
+            parts = href.split('/')
+            if len(parts) < 3:
+                continue
+            match_id = parts[2]
+            
+            # Check duplicate
+            if any(m["id"] == match_id for m in matches):
+                continue
+
+            name = link_tag.text.strip()
+            
+            status_tag = card.find('div', class_=re.compile(r'cb-lv-scrs-state|cb-text-live|cb-text-complete'))
+            status = status_tag.text.strip() if status_tag else "Live"
+            
+            # Skip if match ended / complete
+            if "complete" in (status_tag.get('class', []) if status_tag else []) or "won" in status.lower() or "draw" in status.lower() or "won" in name.lower():
+                continue
+                
+            teams = []
+            score = []
+            
+            team_tags = card.find_all('div', class_=re.compile(r'cb-hmscg-tm-nm'))
+            score_tags = card.find_all('div', class_=re.compile(r'cb-hmscg-tm-scr'))
+            
+            for i, t_tag in enumerate(team_tags):
+                team_name = t_tag.text.strip()
+                # Skip secondary text or icons
+                if not team_name:
+                    continue
+                teams.append(team_name)
+                if i < len(score_tags):
+                    scr_text = score_tags[i].text.strip()
+                    if scr_text:
+                        r_match = re.search(r'(\d+)(?:/(\d+))?', scr_text)
+                        o_match = re.search(r'\(([\d\.]+)\)', scr_text)
+                        
+                        runs = int(r_match.group(1)) if r_match else 0
+                        wickets = int(r_match.group(2)) if r_match and r_match.group(2) else (10 if (r_match and "/" in scr_text) else 0)
+                        overs = o_match.group(1) if o_match else "-"
+                        score.append({
+                            "inning": team_name,
+                            "r": runs,
+                            "w": wickets,
+                            "o": overs
+                        })
+            
+            if not teams and " vs " in name:
+                teams = [t.strip() for t in name.split(" vs ")]
+            
+            matches.append({
+                "id": match_id,
+                "name": name,
+                "status": status,
+                "teams": teams,
+                "teamInfo": [{"name": t, "shortname": t[:3].upper(), "img": f"https://static.cricbuzz.com/a/img/v1/72x72/i1/c170661/default.jpg"} for t in teams],
+                "score": score
+            })
+        return matches
+    except Exception as e:
+        logger.error("Error scraping live scores from Cricbuzz: %s", e, exc_info=True)
+        return []
+
 @app.get("/live-scores")
 async def get_scores(username: str = Depends(get_current_user)):
     if username.startswith('guest_'):
@@ -1310,43 +1392,67 @@ async def get_scores(username: str = Depends(get_current_user)):
             status_code=403,
             detail="Signup to access the live scoreboard"
         )
+    
+    now = time.time()
+    # Cache hit check (90 seconds)
+    if live_scores_cache["data"] is not None and (now - live_scores_cache["time"] < 90):
+        return {"matches": live_scores_cache["data"]}
+
+    live_matches = []
+    cricapi_failed = False
+    
+    # 1. Attempt CricAPI
     try:
         url = f"https://api.cricapi.com/v1/currentMatches?apikey={CRICKET_API_KEY}&offset=0"
         client = get_http_client()
-        r = await client.get(url, timeout=10.0)
+        r = await client.get(url, timeout=8.0)
         data = r.json()
         
-        if data.get("status") != "success":
-            logger.error("CricAPI live matches failed: %s", data)
-            return {"matches": []}
+        if data.get("status") == "success":
+            for match in data.get("data", []):
+                if match.get("matchEnded", False):
+                    continue
 
-        live_matches = []
-        for match in data.get("data", []):
-            if match.get("matchEnded", False):
-                continue
-
-            scores = []
-            for s in match.get("score", []):
-                scores.append({
-                    "inning": s.get("inning", "Score"),
-                    "r": s.get("r", 0),
-                    "w": s.get("w", 0),
-                    "o": s.get("o", 0)
+                scores = []
+                for s in match.get("score", []):
+                    scores.append({
+                        "inning": s.get("inning", "Score"),
+                        "r": s.get("r", 0),
+                        "w": s.get("w", 0),
+                        "o": s.get("o", 0)
+                    })
+                
+                live_matches.append({
+                    "id": match.get("id"),
+                    "name": match.get("name"),
+                    "status": match.get("status"),
+                    "teams": match.get("teams", []),
+                    "teamInfo": match.get("teamInfo", []),
+                    "score": scores
                 })
-            
-            live_matches.append({
-                "id": match.get("id"),
-                "name": match.get("name"),
-                "status": match.get("status"),
-                "teams": match.get("teams", []),
-                "teamInfo": match.get("teamInfo", []),
-                "score": scores
-            })
-
-        return {"matches": live_matches}
+        else:
+            logger.warning("CricAPI currentMatches returned non-success: %s", data)
+            cricapi_failed = True
     except Exception as e:
         logger.error("Live matches CricAPI error: %s", e, exc_info=True)
-        return {"matches": []}
+        cricapi_failed = True
+
+    # 2. If CricAPI failed or returned no live matches, fallback to scraping Cricbuzz
+    if cricapi_failed or not live_matches:
+        logger.info("CricAPI failed or empty. Falling back to Cricbuzz live scores scraper...")
+        scraped_matches = await fetch_live_scores_from_cricbuzz()
+        if scraped_matches:
+            live_matches = scraped_matches
+
+    # 3. If everything fails but we have stale cache, use it
+    if not live_matches and live_scores_cache["data"] is not None:
+        return {"matches": live_scores_cache["data"]}
+
+    # Update cache
+    live_scores_cache["data"] = live_matches
+    live_scores_cache["time"] = now
+
+    return {"matches": live_matches}
 
 
 @app.get("/scorecard/{match_id}")

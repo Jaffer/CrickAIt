@@ -2474,3 +2474,34 @@ kbd {
 .toggle-switch input:checked ~ .toggle-label {
     color: var(--accent-color);
 }
+
+/* Format chips */
+.format-chip {
+    cursor: pointer;
+    background: var(--surface-light, #252932);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--text-muted, #a0aab2);
+    transition: all 0.2s;
+    user-select: none;
+    display: inline-block;
+}
+.format-chip input {
+    display: none;
+}
+.format-chip:hover {
+    border-color: var(--accent-color);
+    color: var(--text, #f1f1f1);
+}
+.format-chip:has(input:checked) {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+    color: #fff !important;
+}
+.format-chip input:checked + span {
+    color: #fff !important;
+}
+
