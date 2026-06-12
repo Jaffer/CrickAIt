@@ -511,13 +511,38 @@
                     <div class="bug-box">
                         <h4><i class="fa-solid fa-bug"></i> Found a bug?</h4>
                         <p>Help us improve CrickAIt.</p>
-                        <a href="https://mail.google.com/mail/?view=cm&to=support@crickait.com&su=CrickAIt Bug Report" target="_blank" rel="noopener noreferrer" class="btn-secondary btn-sm" style="display:inline-block; margin-top:8px;"><i class="fa-solid fa-envelope"></i> Report Bug</a>
+                        <button class="btn-secondary btn-sm" onclick="openBugReport()" style="margin-top:8px;"><i class="fa-solid fa-envelope"></i> Report Bug</button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Bug Report Modal -->
+    <div id="bug-report-modal" class="modal">
+        <div class="modal-content" style="max-width: 480px;">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-bug"></i> Report a Bug</h3>
+                <button class="close-modal" onclick="closeModal('bug-report-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="bug-report-form" onsubmit="submitBugReport(event)">
+                    <div class="input-group">
+                        <label for="bug-subject">Subject</label>
+                        <input type="text" id="bug-subject" class="modern-input" placeholder="e.g. Scorecard not loading" required>
+                    </div>
+                    <div class="input-group" style="margin-top: 14px;">
+                        <label for="bug-message">Describe the issue</label>
+                        <textarea id="bug-message" class="modern-input" rows="5" placeholder="What happened? What did you expect to happen?" required style="resize: vertical; min-height: 100px;"></textarea>
+                    </div>
+                    <div id="bug-report-status" style="margin-top: 10px; font-size: 0.88rem; min-height: 20px;"></div>
+                    <button type="submit" class="auth-submit-btn" style="margin-top: 14px;" id="bug-submit-btn">
+                        <i class="fa-solid fa-paper-plane"></i> Send Report
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
     <!-- Admin Modal -->
     <div id="admin-modal" class="modal">
         <div class="modal-content" style="max-width: 800px; width: 90%;">

@@ -1589,3 +1589,55 @@ function handleExportChats() {
     a.download = `crickait-chat-${new Date().toISOString().split('T')[0]}.txt`;
     a.click();
 }
+
+// --- BUG REPORT via Formspree ---
+
+function openBugReport() {
+    closeModal('help-modal');
+    // Pre-fill username if logged in
+    const username = localStorage.getItem('crickait_display_name') || '';
+    document.getElementById('bug-subject').value = '';
+    document.getElementById('bug-message').value = username ? `Reported by: ${username}\n\n` : '';
+    document.getElementById('bug-report-status').textContent = '';
+    document.getElementById('bug-submit-btn').disabled = false;
+    document.getElementById('bug-submit-btn').innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send Report';
+    openModal('bug-report-modal');
+}
+
+async function submitBugReport(event) {
+    event.preventDefault();
+    const subject = document.getElementById('bug-subject').value.trim();
+    const message = document.getElementById('bug-message').value.trim();
+    const btn = document.getElementById('bug-submit-btn');
+    const status = document.getElementById('bug-report-status');
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending...';
+    status.textContent = '';
+
+    try {
+        const res = await fetch('https://formspree.io/f/xpqeyklq', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({
+                subject: `[CrickAIt Bug] ${subject}`,
+                message: message,
+                _subject: `[CrickAIt Bug] ${subject}`
+            })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            status.innerHTML = '<span style="color: #2ecc71;"><i class="fa-solid fa-circle-check"></i> Thank you! Your report has been sent.</span>';
+            btn.innerHTML = '<i class="fa-solid fa-check"></i> Sent!';
+            setTimeout(() => closeModal('bug-report-modal'), 2500);
+        } else {
+            status.innerHTML = `<span style="color: #ff4b4b;"><i class="fa-solid fa-triangle-exclamation"></i> ${data.error || 'Failed to send. Please try again.'}</span>`;
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send Report';
+        }
+    } catch (e) {
+        status.innerHTML = '<span style="color: #ff4b4b;"><i class="fa-solid fa-triangle-exclamation"></i> Network error. Please try again.</span>';
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send Report';
+    }
+}
