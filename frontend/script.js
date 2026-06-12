@@ -1590,12 +1590,14 @@ function handleExportChats() {
     a.click();
 }
 
-// --- BUG REPORT via Formspree ---
+// --- BUG REPORT via Formspree & EmailJS ---
 
 function openBugReport() {
     closeModal('help-modal');
-    // Pre-fill username if logged in
     const username = localStorage.getItem('crickait_display_name') || '';
+    const email = localStorage.getItem('crickait_email') || '';
+    
+    document.getElementById('bug-email').value = email;
     document.getElementById('bug-subject').value = '';
     document.getElementById('bug-message').value = username ? `Reported by: ${username}\n\n` : '';
     document.getElementById('bug-report-status').textContent = '';
@@ -1606,6 +1608,7 @@ function openBugReport() {
 
 async function submitBugReport(event) {
     event.preventDefault();
+    const email = document.getElementById('bug-email').value.trim();
     const subject = document.getElementById('bug-subject').value.trim();
     const message = document.getElementById('bug-message').value.trim();
     const btn = document.getElementById('bug-submit-btn');
@@ -1616,21 +1619,38 @@ async function submitBugReport(event) {
     status.textContent = '';
 
     try {
+        // 1. Submit to Formspree (notifies you, the admin)
         const res = await fetch('https://formspree.io/f/xpqeyklq', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
             body: JSON.stringify({
+                email: email,
                 subject: `[CrickAIt Bug] ${subject}`,
                 message: message,
                 _subject: `[CrickAIt Bug] ${subject}`
             })
         });
-        const data = await res.json();
+        
         if (res.ok) {
+            // 2. Trigger auto-reply via EmailJS (replies to the user using your EmailJS configuration)
+            const username = localStorage.getItem('crickait_display_name') || 'User';
+            try {
+                await emailjs.send("service_dvblxgd", "template_mbat837", {
+                    to_email: email,
+                    to_name: username,
+                    bug_subject: subject
+                });
+                console.log("EmailJS auto-reply sent successfully.");
+            } catch (emailErr) {
+                console.error("EmailJS auto-reply failed:", emailErr);
+                // We don't fail the submission if just the auto-reply fails, as the main report went through
+            }
+
             status.innerHTML = '<span style="color: #2ecc71;"><i class="fa-solid fa-circle-check"></i> Thank you! Your report has been sent.</span>';
             btn.innerHTML = '<i class="fa-solid fa-check"></i> Sent!';
             setTimeout(() => closeModal('bug-report-modal'), 2500);
         } else {
+            const data = await res.json();
             status.innerHTML = `<span style="color: #ff4b4b;"><i class="fa-solid fa-triangle-exclamation"></i> ${data.error || 'Failed to send. Please try again.'}</span>`;
             btn.disabled = false;
             btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send Report';
