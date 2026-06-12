@@ -1198,11 +1198,21 @@ window.updateUserProfileTrigger = async () => {
         if (headerAuthBtn) headerAuthBtn.style.display = 'none';
         logoutBtn.innerHTML = '<i class="fa-solid fa-right-from-bracket"></i> Log out';
         logoutBtn.classList.add('logout');
-        document.getElementById('menu-upgrade').style.display = 'block';
         document.getElementById('menu-personalization').style.display = 'block';
         document.getElementById('menu-profile').style.display = 'block';
         document.getElementById('menu-settings').style.display = 'block';
-        if (localStorage.getItem('crickait_username') === 'iamthecreator') {
+
+        const username = localStorage.getItem('crickait_username');
+        const isCreator = username === 'iamthecreator';
+
+        // Hide upgrade for creator and pro users
+        if (isCreator || plan === 'pro') {
+            document.getElementById('menu-upgrade').style.display = 'none';
+        } else {
+            document.getElementById('menu-upgrade').style.display = 'block';
+        }
+
+        if (isCreator) {
             document.getElementById('menu-admin').style.display = 'block';
         } else {
             document.getElementById('menu-admin').style.display = 'none';
@@ -1213,6 +1223,20 @@ window.updateUserProfileTrigger = async () => {
     document.getElementById('profile-avatar-large').textContent = initials;
     document.getElementById('profile-name-val').textContent = displayName;
     document.getElementById('profile-email-val').textContent = email;
+
+    // Update status badge based on plan
+    const statusEl = document.getElementById('profile-status-val');
+    const currentUsername = localStorage.getItem('crickait_username');
+    statusEl.classList.remove('pro-badge', 'creator-badge');
+    if (currentUsername === 'iamthecreator') {
+        statusEl.textContent = 'Creator';
+        statusEl.classList.add('creator-badge');
+    } else if (plan === 'pro') {
+        statusEl.textContent = 'Pro User';
+        statusEl.classList.add('pro-badge');
+    } else {
+        statusEl.textContent = 'Free User';
+    }
 
     // Check if token length suggests Google Login simulation or standard password simulation
     const isGoogle = !localStorage.getItem('crickait_username') || localStorage.getItem('crickait_token').length > 30;

@@ -249,12 +249,12 @@
     <!-- Profile Modal -->
     <div id="profile-modal" class="modal">
         <div class="modal-content profile-modal-content">
-            <div class="modal-header" style="z-index: 10;">
+            <div class="profile-cover-bar"></div>
+            <div class="modal-header">
                 <h3><i class="fa-solid fa-circle-user"></i> My Profile</h3>
                 <button class="close-modal" onclick="closeModal('profile-modal')">&times;</button>
             </div>
-            <div class="modal-body p-0">
-                <div class="profile-cover"></div>
+            <div class="modal-body">
                 <div class="profile-card enhanced-profile">
                     <div class="profile-avatar-wrapper">
                         <div class="profile-avatar-large" id="profile-avatar-large">VA</div>
@@ -263,11 +263,11 @@
                         <h2 id="profile-name-val">Guest User</h2>
                         <button class="edit-name-btn" onclick="toggleEditName()" title="Edit Name"><i class="fa-solid fa-pen"></i></button>
                     </div>
-                    <div id="edit-name-form" style="display: none; margin-bottom: 10px;">
+                    <div id="edit-name-form" class="edit-name-form-row" style="display: none;">
                         <input type="text" id="new-display-name" class="modern-input" placeholder="Enter new name">
                         <button class="btn-confirm btn-sm" onclick="saveDisplayName()">Save</button>
                     </div>
-                    <p id="profile-email-val" class="text-muted">guest@crickait.com</p>
+                    <p id="profile-email-val" class="profile-email-text">guest@crickait.com</p>
                     
                     <div class="profile-meta-grid modern-grid">
                         <div class="meta-item">
@@ -287,7 +287,7 @@
                         </div>
                     </div>
                     
-                    <button class="auth-submit-btn logout-btn" onclick="handleLogout()" style="margin-top: 20px; background: #e74c3c;">
+                    <button class="auth-submit-btn logout-btn" onclick="handleLogout()">
                         <i class="fa-solid fa-right-from-bracket"></i> Sign Out
                     </button>
                 </div>
