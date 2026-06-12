@@ -647,11 +647,39 @@ async def get_current_user(request: Request) -> str:
 agent = None
 
 
+async def backup_sqlite_to_redis():
+    import os
+    import asyncio
+    while True:
+        await asyncio.sleep(60)
+        try:
+            if os.path.exists("checkpoints.db"):
+                with open("checkpoints.db", "rb") as f:
+                    db_bytes = f.read()
+                await redis_client.set("sqlite_backup", db_bytes)
+        except Exception as e:
+            logger.error("Failed to auto-backup sqlite to redis: %s", e)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global agent
+    import os
+    import asyncio
+    
     # Initialize connection-pooled client
     get_http_client()
+
+    # --- RESTORE FROM REDIS ---
+    try:
+        backup_bytes = await redis_client.get("sqlite_backup")
+        if backup_bytes:
+            with open("checkpoints.db", "wb") as f:
+                f.write(backup_bytes)
+            logger.info("Successfully restored checkpoints.db from Redis backup!")
+        else:
+            logger.info("No SQLite backup found in Redis. Starting fresh.")
+    except Exception as e:
+        logger.error("Failed to restore SQLite from Redis: %s", e)
 
     # Create users table in checkpoints.db
     try:
@@ -686,7 +714,25 @@ async def lifespan(app: FastAPI):
     async with AsyncSqliteSaver.from_conn_string("checkpoints.db") as checkpointer:
         await checkpointer.setup()
         agent = workflow.compile(checkpointer=checkpointer)
+        
+        # --- START AUTO-BACKUP TASK ---
+        backup_task = asyncio.create_task(backup_sqlite_to_redis())
+        
         yield
+        
+        # --- TEARDOWN ---
+        backup_task.cancel()
+        
+        # Final emergency backup
+        try:
+            if os.path.exists("checkpoints.db"):
+                with open("checkpoints.db", "rb") as f:
+                    db_bytes = f.read()
+                await redis_client.set("sqlite_backup", db_bytes)
+                logger.info("Emergency backup of checkpoints.db completed.")
+        except Exception as e:
+            logger.error("Failed final sqlite backup: %s", e)
+
     if http_client:
         await http_client.aclose()
 
