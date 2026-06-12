@@ -1165,6 +1165,11 @@ async def ask(user_prompt: str, session_id: Optional[str] = None, local_date: Op
             "route": "ERROR"
         }
 
+@app.get("/health")
+@app.head("/health")
+async def health_check():
+    return {"status": "ok"}
+
 @app.get("/debug-logs")
 async def get_debug_logs():
     error = await redis_client.get("debug_last_error")
