@@ -1686,9 +1686,8 @@ async function sendBugFixedNotification(event) {
     status.textContent = '';
 
     try {
-        // We use the EmailJS template ID 'template_fixed_notification'
-        // Please make sure you create this template in EmailJS!
-        await emailjs.send("service_dvblxgd", "template_fixed_notification", {
+        // We use the EmailJS template ID 'template_nxwe5ta'
+        await emailjs.send("service_dvblxgd", "template_nxwe5ta", {
             to_email: email,
             to_name: name,
             bug_subject: subject
