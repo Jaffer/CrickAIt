@@ -133,6 +133,24 @@ export default function ChatInterface({
           <div className="welcome-screen">
             <div className="logo-container"><img src="/favicon.png" alt="Logo" /></div>
             <h1>How can I help you with cricket today?</h1>
+            <div className="suggestion-cards">
+              <div className="card" onClick={() => handleSend('Show me the current IPL points table')}>
+                <div className="card-icon"><i className="fa-solid fa-table-list"></i></div>
+                <div className="card-text">Show me the current IPL points table</div>
+              </div>
+              <div className="card" onClick={() => handleSend('What is the latest cricket news?')}>
+                <div className="card-icon"><i className="fa-solid fa-newspaper"></i></div>
+                <div className="card-text">What is the latest cricket news?</div>
+              </div>
+              <div className="card" onClick={() => handleSend('Show me live match scores')}>
+                <div className="card-icon"><i className="fa-solid fa-satellite-dish"></i></div>
+                <div className="card-text">Show me live match scores</div>
+              </div>
+              <div className="card" onClick={() => handleSend('Give me stats for Virat Kohli')}>
+                <div className="card-icon"><i className="fa-solid fa-chart-simple"></i></div>
+                <div className="card-text">Give me stats for Virat Kohli</div>
+              </div>
+            </div>
           </div>
         )}
 
