@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { authenticatedFetch } from '../services/api';
 import LiveMatches from './LiveMatches';
+import UserProfilePopover from './UserProfilePopover';
 
 export default function Sidebar({
   isOpen,
@@ -13,7 +14,9 @@ export default function Sidebar({
   onOpenModal,
   onSelectMatch,
   onConfirmAlert,
-  onShowAlert
+  onShowAlert,
+  popoverOpen,
+  setPopoverOpen
 }) {
   const [sessions, setSessions] = useState([]);
   const [activeDropdownSid, setActiveDropdownSid] = useState(null);
@@ -186,6 +189,16 @@ export default function Sidebar({
             <i className="fa-solid fa-ellipsis-h"></i>
           </button>
         </div>
+        <UserProfilePopover
+          isOpen={popoverOpen}
+          displayName={userProfile.displayName}
+          email={userProfile.email}
+          plan={userProfile.plan}
+          username={userProfile.username}
+          onClose={() => setPopoverOpen(false)}
+          onOpenModal={onOpenModal}
+          onLogout={onLogout}
+        />
       </div>
     </nav>
   );

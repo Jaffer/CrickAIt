@@ -141,6 +141,8 @@ body {
     flex: 1;
     overflow-y: auto;
     padding: 12px;
+    display: flex;
+    flex-direction: column;
 }
 
 .sidebar-content::-webkit-scrollbar {
@@ -157,6 +159,10 @@ body {
     padding: 8px 12px;
     margin-top: 10px;
     font-weight: 500;
+}
+
+.chat-list {
+    flex: 1;
 }
 
 .chat-item {

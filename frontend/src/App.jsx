@@ -151,6 +151,8 @@ function App() {
           onSelectMatch={setSelectedMatchId}
           onConfirmAlert={showConfirmAlert}
           onShowAlert={showSimpleAlert}
+          popoverOpen={popoverOpen}
+          setPopoverOpen={setPopoverOpen}
         />
         <ChatInterface
           currentSessionId={currentSessionId}
@@ -161,18 +163,6 @@ function App() {
           onLogout={handleLogout}
         />
       </div>
-
-      {/* Popovers */}
-      <UserProfilePopover
-        isOpen={popoverOpen}
-        displayName={userProfile.displayName}
-        email={userProfile.email}
-        plan={userProfile.plan}
-        username={userProfile.username}
-        onClose={() => setPopoverOpen(false)}
-        onOpenModal={setActiveModal}
-        onLogout={handleLogout}
-      />
 
       {/* Modals */}
       {activeModal === 'profile' && (

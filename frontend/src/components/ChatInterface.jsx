@@ -128,6 +128,15 @@ export default function ChatInterface({
       </header>
 
       <div className="chat-container">
+        {/* Ambient Effects */}
+        <div className="floating-cricket-element fc-1">🏏</div>
+        <div className="floating-cricket-element fc-2">🥎</div>
+        <div className="floating-cricket-element fc-3">🏏</div>
+        <div className="floating-cricket-element fc-4">🥎</div>
+        <div className="ambient-glow orb-1"></div>
+        <div className="ambient-glow orb-2"></div>
+        <div className="ambient-glow orb-3"></div>
+
         {messages.length === 0 && !loading && (
           <div className="welcome-screen">
             <div className="logo-container"><img src="/favicon.png" alt="Logo" /></div>
