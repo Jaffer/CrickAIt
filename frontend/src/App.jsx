@@ -136,7 +136,7 @@ function App() {
 
       {isAuthenticated && <NewsTicker />}
 
-      <div className="app-container" style={{ marginTop: isAuthenticated ? '28px' : '0' }}>
+      <div className="app-container">
         <Sidebar
           isOpen={sidebarOpen}
           setIsOpen={setSidebarOpen}

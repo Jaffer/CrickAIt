@@ -1,6 +1,47 @@
 import { useState, useEffect } from 'react';
 import { authenticatedFetch, API_URL } from '../services/api';
 
+function getBrowserFingerprint() {
+  try {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    ctx.textBaseline = "top";
+    ctx.font = "14px 'Arial'";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = "#f60";
+    ctx.fillRect(125,1,62,20);
+    ctx.fillStyle = "#069";
+    ctx.fillText("CrickAIt Fingerprint", 2, 15);
+    ctx.fillStyle = "rgba(102, 204, 0, 0.7)";
+    ctx.fillText("CrickAIt Fingerprint", 4, 17);
+    const canvasData = canvas.toDataURL();
+    
+    let hash = 0;
+    const inputs = [
+      canvasData,
+      navigator.userAgent,
+      navigator.language,
+      screen.colorDepth,
+      screen.width + 'x' + screen.height,
+      new Date().getTimezoneOffset()
+    ].join('###');
+    
+    for (let i = 0; i < inputs.length; i++) {
+      const char = inputs.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash |= 0;
+    }
+    return 'dev_' + Math.abs(hash).toString(16);
+  } catch (e) {
+    let fallbackId = localStorage.getItem('crickait_fallback_device_id');
+    if (!fallbackId) {
+      fallbackId = 'dev_fallback_' + Math.random().toString(36).substring(2, 15);
+      localStorage.setItem('crickait_fallback_device_id', fallbackId);
+    }
+    return fallbackId;
+  }
+}
+
 export default function AuthOverlay({ onLogin }) {
   const [mode, setMode] = useState('login');
   const [username, setUsername] = useState('');
@@ -9,17 +50,67 @@ export default function AuthOverlay({ onLogin }) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (window.google) {
-      window.google.accounts.id.initialize({
-        client_id: "895472652408-9tp4qlkqnpb6ufvo61ipsoaet2d0lmai.apps.googleusercontent.com",
-        callback: handleGoogleCredentialResponse
-      });
-      window.google.accounts.id.renderButton(
-        document.getElementById("google-btn-container"),
-        { theme: "outline", size: "large", width: 360, shape: "rectangular" }
-      );
-    }
+    const initGoogle = () => {
+      if (window.google) {
+        window.google.accounts.id.initialize({
+          client_id: "895472652408-9tp4qlkqnpb6ufvo61ipsoaet2d0lmai.apps.googleusercontent.com",
+          callback: handleGoogleCredentialResponse
+        });
+        const container = document.getElementById("google-btn-container");
+        if (container) {
+          window.google.accounts.id.renderButton(
+            container,
+            { theme: "outline", size: "large", width: 360, shape: "rectangular" }
+          );
+        }
+      }
+    };
+
+    initGoogle();
+
+    let attempts = 0;
+    const interval = setInterval(() => {
+      attempts++;
+      if (window.google) {
+        initGoogle();
+        clearInterval(interval);
+      } else if (attempts > 30) {
+        clearInterval(interval);
+      }
+    }, 100);
+
+    return () => clearInterval(interval);
   }, []);
+
+  const handleClose = async () => {
+    const token = localStorage.getItem('crickait_token');
+    if (token) {
+      onLogin();
+      return;
+    }
+
+    try {
+      const deviceId = getBrowserFingerprint();
+      const res = await fetch(`${API_URL}/auth/guest`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ device_id: deviceId })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        localStorage.setItem('crickait_token', data.token);
+        localStorage.setItem('crickait_username', data.username);
+        localStorage.setItem('crickait_display_name', data.display_name);
+        localStorage.setItem('crickait_plan', 'guest');
+        onLogin();
+      } else {
+        alert('Guest login failed. Please try again.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Guest login failed due to network error.');
+    }
+  };
 
   const handleGoogleCredentialResponse = async (response) => {
     try {
@@ -90,6 +181,7 @@ export default function AuthOverlay({ onLogin }) {
   return (
     <div className="auth-overlay" style={{display: 'flex'}}>
       <div className="auth-card">
+        <button className="close-auth" onClick={handleClose} aria-label="Close Auth Overlay">&times;</button>
         <div className="auth-logo"><img src="/favicon.png" alt="CrickAIt Logo" /></div>
         <h2>Welcome to CrickAIt</h2>
         <form onSubmit={handleSubmit}>
