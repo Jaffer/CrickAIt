@@ -13,6 +13,7 @@ import BugReportModal from './components/BugReportModal';
 import AdminModal from './components/AdminModal';
 import ScorecardOverlay from './components/ScorecardOverlay';
 import CustomAlert from './components/CustomAlert';
+import ErrorOverlay from './components/ErrorOverlay';
 import { getAuthToken, authenticatedFetch } from './services/api';
 
 function App() {
@@ -24,6 +25,7 @@ function App() {
   const [activeModal, setActiveModal] = useState(null); // null | 'profile' | 'upgrade' | 'personalization' | 'settings' | 'help' | 'bug-report' | 'admin'
   const [selectedMatchId, setSelectedMatchId] = useState(null);
   const [customAlert, setCustomAlert] = useState(null); // null | { title, message, isPrompt, defaultValue, onConfirm, onCancel }
+  const [errorOverlay, setErrorOverlay] = useState(null); // null | 'duck' | 'server'
 
   useEffect(() => {
     const handleAuthExpired = () => handleLogout();
@@ -155,6 +157,7 @@ function App() {
           setCurrentSessionId={setCurrentSessionId}
           toggleSidebar={() => setSidebarOpen(prev => !prev)}
           onShowAlert={showSimpleAlert}
+          onShowError={(type) => setErrorOverlay(type)}
           onLogout={handleLogout}
         />
       </div>
@@ -238,6 +241,13 @@ function App() {
           defaultValue={customAlert.defaultValue}
           onConfirm={customAlert.onConfirm}
           onCancel={customAlert.onCancel}
+        />
+      )}
+
+      {errorOverlay && (
+        <ErrorOverlay
+          type={errorOverlay}
+          onClose={() => setErrorOverlay(null)}
         />
       )}
     </>

@@ -8,6 +8,7 @@ export default function ChatInterface({
   setCurrentSessionId,
   toggleSidebar,
   onShowAlert,
+  onShowError,
   onLogout
 }) {
   const [messages, setMessages] = useState([]);
@@ -43,7 +44,6 @@ export default function ChatInterface({
       if (res.ok) {
         const data = await res.json();
         setMessages(data.messages || []);
-        // Get name from Sidebar sessions if possible, or request session name
         const namesRes = await authenticatedFetch('/session-names');
         if (namesRes.ok) {
           const names = await namesRes.json();
@@ -51,9 +51,12 @@ export default function ChatInterface({
         } else {
           setChatTitle('Chat');
         }
+      } else {
+        onShowError('server');
       }
     } catch (e) {
       console.error(e);
+      onShowError('server');
     }
   };
 
@@ -103,17 +106,13 @@ export default function ChatInterface({
         }
       } else {
         setMessages(prev => [...prev, { role: 'assistant', content: data.response }]);
-        // Dispatch session changed event to update Sidebar list
         if (isNewSession) {
           window.dispatchEvent(new Event('chat-sessions-changed'));
         }
       }
     } catch (e) {
       console.error(e);
-      onShowAlert({
-        title: 'Notification',
-        message: 'Network connection error. If this is the first action in a while, the backend server might be waking up (Render free tier cold starts can take up to 60 seconds). Please wait a moment and try again.'
-      });
+      onShowError('server');
     } finally {
       setLoading(false);
     }
