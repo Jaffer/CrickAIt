@@ -45,9 +45,11 @@ export default function UserProfilePopover({
       <button className="popover-item" onClick={() => { onOpenModal('help'); onClose(); }}>
         <i className="fa-solid fa-circle-question"></i> Help
       </button>
-      <button className="popover-item logout" onClick={() => { onLogout(); onClose(); }}>
-        <i className="fa-solid fa-right-from-bracket"></i> Log out
-      </button>
+      {plan !== 'guest' && (
+        <button className="popover-item logout" onClick={() => { onLogout(); onClose(); }}>
+          <i className="fa-solid fa-right-from-bracket"></i> Log out
+        </button>
+      )}
     </div>
   );
 }

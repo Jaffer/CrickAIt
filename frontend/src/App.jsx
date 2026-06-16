@@ -28,6 +28,30 @@ function App() {
   const [errorOverlay, setErrorOverlay] = useState(null); // null | 'duck' | 'server'
 
   useEffect(() => {
+    // Apply saved theme
+    const savedTheme = localStorage.getItem('crickait_theme') || 'dark';
+    const root = document.documentElement;
+    if (savedTheme === 'green') {
+        root.style.setProperty('--bg-color', '#0a1a12');
+        root.style.setProperty('--surface', '#132c1d');
+        root.style.setProperty('--surface-light', '#1e422c');
+        root.style.setProperty('--accent', '#00d26a');
+    } else if (savedTheme === 'light') {
+        root.style.setProperty('--bg-color', '#f5f7fa');
+        root.style.setProperty('--surface', '#ffffff');
+        root.style.setProperty('--surface-light', '#eef2f5');
+        root.style.setProperty('--text', '#2d3436');
+        root.style.setProperty('--text-muted', '#636e72');
+        root.style.setProperty('--accent', '#00b894');
+    } else {
+        root.style.setProperty('--bg-color', '#0f1115');
+        root.style.setProperty('--surface', '#1a1d24');
+        root.style.setProperty('--surface-light', '#252932');
+        root.style.setProperty('--text', '#f1f1f1');
+        root.style.setProperty('--text-muted', '#a0aab2');
+        root.style.setProperty('--accent', '#10a37f');
+    }
+
     const handleAuthExpired = () => handleLogout();
     window.addEventListener('auth-expired', handleAuthExpired);
     return () => window.removeEventListener('auth-expired', handleAuthExpired);
