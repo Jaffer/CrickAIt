@@ -13,5 +13,4 @@ httpx
 beautifulsoup4
 python-dotenv
 wikipedia
-duckduckgo-search
-ddgs
+tavily-python
