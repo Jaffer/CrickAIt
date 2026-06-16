@@ -28,6 +28,14 @@ body {
     overflow: hidden;
 }
 
+#root {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+}
+
 /* Infinite Ticker */
 @keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 .ticker-wrap {
