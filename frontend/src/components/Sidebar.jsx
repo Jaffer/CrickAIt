@@ -10,6 +10,7 @@ export default function Sidebar({
   setCurrentSessionId,
   userProfile,
   onLogout,
+  onSignup,
   onTogglePopover,
   onOpenModal,
   onSelectMatch,
@@ -198,6 +199,7 @@ export default function Sidebar({
           onClose={() => setPopoverOpen(false)}
           onOpenModal={onOpenModal}
           onLogout={onLogout}
+          onSignup={onSignup}
         />
       </div>
     </nav>

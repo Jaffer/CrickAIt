@@ -6,7 +6,8 @@ export default function UserProfilePopover({
   username,
   onClose,
   onOpenModal,
-  onLogout
+  onLogout,
+  onSignup
 }) {
   if (!isOpen) return null;
 
@@ -45,9 +46,13 @@ export default function UserProfilePopover({
       <button className="popover-item" onClick={() => { onOpenModal('help'); onClose(); }}>
         <i className="fa-solid fa-circle-question"></i> Help
       </button>
-      {plan !== 'guest' && (
+      {plan !== 'guest' ? (
         <button className="popover-item logout" onClick={() => { onLogout(); onClose(); }}>
           <i className="fa-solid fa-right-from-bracket"></i> Log out
+        </button>
+      ) : (
+        <button className="popover-item signup" onClick={() => { onSignup(); onClose(); }}>
+          <i className="fa-solid fa-user-plus"></i> Sign up
         </button>
       )}
     </div>

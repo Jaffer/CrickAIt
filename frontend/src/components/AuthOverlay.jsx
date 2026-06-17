@@ -42,8 +42,8 @@ function getBrowserFingerprint() {
   }
 }
 
-export default function AuthOverlay({ onLogin }) {
-  const [mode, setMode] = useState('login');
+export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
+  const [mode, setMode] = useState(initialMode);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

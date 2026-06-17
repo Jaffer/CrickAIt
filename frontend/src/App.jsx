@@ -26,6 +26,7 @@ function App() {
   const [selectedMatchId, setSelectedMatchId] = useState(null);
   const [customAlert, setCustomAlert] = useState(null); // null | { title, message, isPrompt, defaultValue, onConfirm, onCancel }
   const [errorOverlay, setErrorOverlay] = useState(null); // null | 'duck' | 'server'
+  const [authMode, setAuthMode] = useState('login');
 
   useEffect(() => {
     // Apply saved theme
@@ -121,6 +122,11 @@ function App() {
     setUserProfile({ displayName: '', email: '', plan: 'free', username: '' });
   };
 
+  const handleSignupAction = () => {
+    handleLogout();
+    setAuthMode('signup');
+  };
+
   const showSimpleAlert = ({ title, message }) => {
     setCustomAlert({
       title,
@@ -158,7 +164,7 @@ function App() {
 
   return (
     <>
-      {!isAuthenticated && <AuthOverlay onLogin={() => setIsAuthenticated(true)} />}
+      {!isAuthenticated && <AuthOverlay initialMode={authMode} onLogin={() => { setIsAuthenticated(true); setAuthMode('login'); }} />}
 
       {isAuthenticated && <NewsTicker />}
 
@@ -170,6 +176,7 @@ function App() {
           setCurrentSessionId={setCurrentSessionId}
           userProfile={userProfile}
           onLogout={handleLogout}
+          onSignup={handleSignupAction}
           onTogglePopover={() => setPopoverOpen(prev => !prev)}
           onOpenModal={setActiveModal}
           onSelectMatch={setSelectedMatchId}
