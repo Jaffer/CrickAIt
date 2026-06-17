@@ -178,7 +178,11 @@ export default function Sidebar({
       <div className="sidebar-footer">
         <div className="user-profile-trigger" onClick={(e) => { e.stopPropagation(); onTogglePopover(); }}>
           <div className="user-avatar">
-            {userProfile.displayName ? userProfile.displayName.substring(0, 2).toUpperCase() : '?'}
+            {userProfile.avatar ? (
+              <img src={userProfile.avatar} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+            ) : (
+              userProfile.displayName ? userProfile.displayName.substring(0, 2).toUpperCase() : '?'
+            )}
           </div>
           <div className="user-info-text">
             <div className="user-display-name">{userProfile.displayName || 'Guest User'}</div>
@@ -196,6 +200,7 @@ export default function Sidebar({
           email={userProfile.email}
           plan={userProfile.plan}
           username={userProfile.username}
+          avatar={userProfile.avatar}
           onClose={() => setPopoverOpen(false)}
           onOpenModal={onOpenModal}
           onLogout={onLogout}

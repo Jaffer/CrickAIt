@@ -4,6 +4,7 @@ export default function UserProfilePopover({
   email,
   plan,
   username,
+  avatar,
   onClose,
   onOpenModal,
   onLogout,
@@ -17,7 +18,11 @@ export default function UserProfilePopover({
     <div className="user-profile-popover" style={{ display: 'block' }}>
       <div className="popover-header">
         <div className="user-avatar">
-          {displayName ? displayName.substring(0, 2).toUpperCase() : '?'}
+          {avatar ? (
+            <img src={avatar} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+          ) : (
+            displayName ? displayName.substring(0, 2).toUpperCase() : '?'
+          )}
         </div>
         <div className="popover-user-details">
           <div className="popover-display-name">{displayName || 'User'}</div>

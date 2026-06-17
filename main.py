@@ -692,12 +692,17 @@ async def lifespan(app: FastAPI):
                 auth_provider TEXT DEFAULT 'local',
                 display_name TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                plan TEXT DEFAULT 'free'
+                plan TEXT DEFAULT 'free',
+                avatar TEXT
             )
             """)
-            # Try to add 'plan' column to existing table if it doesn't exist
+            # Try to add columns to existing table if they don't exist
             try:
                 await conn.execute("ALTER TABLE users ADD COLUMN plan TEXT DEFAULT 'free'")
+            except Exception:
+                pass
+            try:
+                await conn.execute("ALTER TABLE users ADD COLUMN avatar TEXT")
             except Exception:
                 pass  # Column likely exists
             
@@ -836,7 +841,8 @@ async def register(request: RegisterRequest):
                 "password_hash": pwd_hash,
                 "auth_provider": "local",
                 "display_name": request.username,
-                "plan": plan
+                "plan": plan,
+                "avatar": None
             }
             await redis_client.set(f"user:account:{username}", json.dumps(redis_user))
             await redis_client.set(f"user:email:{email}", username)
@@ -901,10 +907,11 @@ async def login(request: LoginRequest):
         if redis_data:
             redis_data_str = redis_data.decode('utf-8') if isinstance(redis_data, bytes) else redis_data
             user_data = json.loads(redis_data_str)
+            avatar_val = user_data.get("avatar", None)
             async with aiosqlite.connect("checkpoints.db") as conn:
                 await conn.execute(
-                    "INSERT OR IGNORE INTO users (username, email, password_hash, auth_provider, display_name, plan) VALUES (?, ?, ?, ?, ?, ?)",
-                    (user_data["username"], user_data["email"], user_data["password_hash"], user_data["auth_provider"], user_data["display_name"], user_data["plan"])
+                    "INSERT OR IGNORE INTO users (username, email, password_hash, auth_provider, display_name, plan, avatar) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (user_data["username"], user_data["email"], user_data["password_hash"], user_data["auth_provider"], user_data["display_name"], user_data["plan"], avatar_val)
                 )
                 await conn.commit()
     except Exception as re_err:
@@ -973,10 +980,11 @@ async def google_login(request: GoogleLoginRequest):
             if redis_data:
                 redis_data_str = redis_data.decode('utf-8') if isinstance(redis_data, bytes) else redis_data
                 user_data = json.loads(redis_data_str)
+                avatar_val = user_data.get("avatar", None)
                 async with aiosqlite.connect("checkpoints.db") as conn:
                     await conn.execute(
-                        "INSERT OR IGNORE INTO users (username, email, password_hash, auth_provider, display_name, plan) VALUES (?, ?, ?, ?, ?, ?)",
-                        (user_data["username"], user_data["email"], user_data["password_hash"], user_data["auth_provider"], user_data["display_name"], user_data["plan"])
+                        "INSERT OR IGNORE INTO users (username, email, password_hash, auth_provider, display_name, plan, avatar) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                        (user_data["username"], user_data["email"], user_data["password_hash"], user_data["auth_provider"], user_data["display_name"], user_data["plan"], avatar_val)
                     )
                     await conn.commit()
     except Exception as re_err:
@@ -1015,7 +1023,8 @@ async def google_login(request: GoogleLoginRequest):
                         "password_hash": None,
                         "auth_provider": "google",
                         "display_name": display_name,
-                        "plan": plan
+                        "plan": plan,
+                        "avatar": None
                     }
                     await redis_client.set(f"user:account:{username}", json.dumps(redis_user))
                     await redis_client.set(f"user:email:{email}", username)
@@ -1047,24 +1056,72 @@ async def get_me(username: str = Depends(get_current_user)):
             "username": username,
             "email": "guest@crickait.com",
             "display_name": "Guest User",
-            "plan": "guest"
+            "plan": "guest",
+            "avatar": None
         }
     try:
         async with aiosqlite.connect("checkpoints.db") as conn:
-            async with conn.execute("SELECT username, email, display_name, plan FROM users WHERE username = ?", (username,)) as c:
+            async with conn.execute("SELECT username, email, display_name, plan, avatar FROM users WHERE username = ?", (username,)) as c:
                 row = await c.fetchone()
                 if row:
                     return {
                         "username": row[0],
                         "email": row[1],
                         "display_name": row[2],
-                        "plan": row[3]
+                        "plan": row[3],
+                        "avatar": row[4]
                     }
                 raise HTTPException(status_code=404, detail="User not found")
     except HTTPException:
         raise
     except Exception as e:
         logger.error("Failed to fetch user profile: %s", e)
+        raise HTTPException(status_code=500, detail="Database error")
+
+
+class UpdateProfileRequest(BaseModel):
+    display_name: Optional[str] = None
+    avatar: Optional[str] = None
+
+@app.patch("/auth/me")
+async def update_me(request: UpdateProfileRequest, username: str = Depends(get_current_user)):
+    if username.startswith('guest_'):
+        raise HTTPException(status_code=403, detail="Guests cannot update profile details. Please sign up.")
+    
+    try:
+        async with aiosqlite.connect("checkpoints.db") as conn:
+            update_fields = []
+            params = []
+            
+            if request.display_name is not None:
+                update_fields.append("display_name = ?")
+                params.append(request.display_name.strip())
+            if request.avatar is not None:
+                update_fields.append("avatar = ?")
+                params.append(request.avatar)
+                
+            if not update_fields:
+                return {"status": "success"}
+                
+            params.append(username)
+            query = f"UPDATE users SET {', '.join(update_fields)} WHERE username = ?"
+            await conn.execute(query, tuple(params))
+            await conn.commit()
+            
+            # Update Redis cache
+            redis_data_str = await redis_client.get(f"user:account:{username}")
+            if redis_data_str:
+                redis_data_str = redis_data_str.decode('utf-8') if isinstance(redis_data_str, bytes) else redis_data_str
+                user_data = json.loads(redis_data_str)
+                if request.display_name is not None:
+                    user_data["display_name"] = request.display_name.strip()
+                if request.avatar is not None:
+                    user_data["avatar"] = request.avatar
+                await redis_client.set(f"user:account:{username}", json.dumps(user_data))
+                
+        return {"status": "success"}
+    except Exception as e:
+        logger.error("Failed to update user profile: %s", e)
         raise HTTPException(status_code=500, detail="Database error")
 
 

@@ -20,7 +20,13 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(!!getAuthToken());
   const [currentSessionId, setCurrentSessionId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 768);
-  const [userProfile, setUserProfile] = useState({ displayName: '', email: '', plan: 'free', username: '' });
+  const [userProfile, setUserProfile] = useState({ 
+    displayName: localStorage.getItem('crickait_display_name') || '', 
+    email: '', 
+    plan: localStorage.getItem('crickait_plan') || 'free', 
+    username: localStorage.getItem('crickait_username') || '',
+    avatar: localStorage.getItem('crickait_avatar') || null
+  });
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [activeModal, setActiveModal] = useState(null); // null | 'profile' | 'upgrade' | 'personalization' | 'settings' | 'help' | 'bug-report' | 'admin'
   const [selectedMatchId, setSelectedMatchId] = useState(null);
@@ -95,12 +101,18 @@ function App() {
           displayName: data.display_name || data.username,
           email: data.email,
           plan: data.plan || 'free',
-          username: data.username
+          username: data.username,
+          avatar: data.avatar || null
         };
         setUserProfile(profileData);
         localStorage.setItem('crickait_plan', data.plan || 'free');
         localStorage.setItem('crickait_display_name', data.display_name || data.username);
         localStorage.setItem('crickait_username', data.username);
+        if (data.avatar) {
+          localStorage.setItem('crickait_avatar', data.avatar);
+        } else {
+          localStorage.removeItem('crickait_avatar');
+        }
       }
     } catch (e) {
       console.error(e);
@@ -117,9 +129,10 @@ function App() {
     localStorage.removeItem('crickait_username');
     localStorage.removeItem('crickait_display_name');
     localStorage.removeItem('crickait_plan');
+    localStorage.removeItem('crickait_avatar');
     setIsAuthenticated(false);
     setCurrentSessionId(null);
-    setUserProfile({ displayName: '', email: '', plan: 'free', username: '' });
+    setUserProfile({ displayName: '', email: '', plan: 'free', username: '', avatar: null });
   };
 
   const handleSignupAction = () => {
