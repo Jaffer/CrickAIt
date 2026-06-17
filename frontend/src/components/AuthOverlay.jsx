@@ -54,14 +54,17 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
       if (window.google) {
         window.google.accounts.id.initialize({
           client_id: "895472652408-9tp4qlkqnpb6ufvo61ipsoaet2d0lmai.apps.googleusercontent.com",
-          callback: handleGoogleCredentialResponse
+          callback: handleGoogleCredentialResponse,
+          itp_support: true,
+          use_fedcm_for_prompt: true
         });
         const container = document.getElementById("google-btn-container");
         if (container) {
           window.google.accounts.id.renderButton(
             container,
-            { theme: "outline", size: "large", width: 360, shape: "rectangular" }
+            { theme: "outline", size: "large", width: 360, shape: "rectangular", text: "continue_with" }
           );
+          window.google.accounts.id.prompt();
         }
       }
     };
