@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import AuthOverlay from './components/AuthOverlay';
 import Sidebar from './components/Sidebar';
 import ChatInterface from './components/ChatInterface';
@@ -284,6 +285,8 @@ function App() {
           onClose={() => setErrorOverlay(null)}
         />
       )}
+
+      <Analytics />
     </>
   );
 }
