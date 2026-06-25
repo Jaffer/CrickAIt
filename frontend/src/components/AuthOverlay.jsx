@@ -51,39 +51,45 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
 
   useEffect(() => {
     let initialized = false;
+    const callbackRef = { current: handleGoogleCredentialResponse };
+
+    callbackRef.current = handleGoogleCredentialResponse;
 
     const initGoogle = () => {
-      if (!window.google || !window.google.accounts || initialized) return;
+      if (!window.google?.accounts?.id || initialized) return;
 
-      window.google.accounts.id.initialize({
-        client_id: "895472652408-9tp4qlkqnpb6ufvo61ipsoaet2d0lmai.apps.googleusercontent.com",
-        callback: handleGoogleCredentialResponse,
-        itp_support: true,
-        use_fedcm_for_prompt: false
-      });
-      initialized = true;
-
-      const container = document.getElementById("google-btn-container");
-      if (container) {
-        window.google.accounts.id.renderButton(
-          container,
-          { theme: "outline", size: "large", width: 360, shape: "rectangular", text: "continue_with" }
-        );
-        window.google.accounts.id.prompt((notification) => {
-          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-            console.warn("Google prompt not displayed:", notification.getNotDisplayedReason?.() || notification.getSkippedReason?.());
-          }
+      try {
+        window.google.accounts.id.initialize({
+          client_id: "895472652408-9tp4qlkqnpb6ufvo61ipsoaet2d0lmai.apps.googleusercontent.com",
+          callback: (response) => callbackRef.current(response),
+          auto_select: false,
+          cancel_on_tap_outside: true,
+          itp_support: true,
+          use_fedcm_for_prompt: false
         });
+        initialized = true;
+
+        const container = document.getElementById("google-btn-container");
+        if (container) {
+          container.innerHTML = '';
+          window.google.accounts.id.renderButton(
+            container,
+            { theme: "outline", size: "large", width: 360, shape: "rectangular", text: "continue_with" }
+          );
+        }
+      } catch (err) {
+        console.error("Google Sign-In initialization failed:", err);
       }
     };
 
     let attempts = 0;
     const interval = setInterval(() => {
       attempts++;
-      if (window.google) {
+      if (window.google?.accounts?.id) {
         initGoogle();
         if (initialized) clearInterval(interval);
       } else if (attempts > 50) {
+        console.warn("Google Identity Services library failed to load after 10s");
         clearInterval(interval);
       }
     }, 200);
@@ -123,6 +129,12 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
 
   const handleGoogleCredentialResponse = async (response) => {
     try {
+      if (!response?.credential) {
+        console.error("Google Sign-In: No credential received", response);
+        alert('Google sign-in failed: no credential received');
+        return;
+      }
+
       const payloadBase64Url = response.credential.split('.')[1];
       let payloadBase64 = payloadBase64Url.replace(/-/g, '+').replace(/_/g, '/');
       while (payloadBase64.length % 4) {
@@ -152,8 +164,8 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
       localStorage.setItem('crickait_display_name', data.display_name);
       onLogin();
     } catch (e) {
-      console.error(e);
-      alert('Google Sign-in failed due to network error');
+      console.error("Google sign-in error:", e);
+      alert('Google Sign-in failed: ' + (e.message || 'unknown error'));
     }
   };
 
