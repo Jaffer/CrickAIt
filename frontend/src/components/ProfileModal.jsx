@@ -105,7 +105,7 @@ export default function ProfileModal({ onClose, onLogout }) {
                   
                   <div className="avatar-selection-area" style={{ marginTop: '10px', width: '100%' }}>
                     <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: 'var(--text-secondary)' }}>Choose an Avatar</h4>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', marginBottom: '15px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 50px)', gap: '12px', justifyContent: 'center', marginBottom: '15px' }}>
                       {predefinedAvatars.map((av, idx) => (
                         <img 
                           key={idx} 
