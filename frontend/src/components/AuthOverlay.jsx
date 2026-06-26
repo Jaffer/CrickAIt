@@ -77,12 +77,6 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
             { theme: "outline", size: "large", width: 360, shape: "rectangular", text: "continue_with" }
           );
         }
-
-        window.google.accounts.id.prompt((notification) => {
-          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-            console.warn("Google prompt not displayed:", notification.getNotDisplayedReason?.() || notification.getSkippedReason?.());
-          }
-        });
       } catch (err) {
         console.error("Google Sign-In initialization failed:", err);
       }
