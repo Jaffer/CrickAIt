@@ -134,20 +134,19 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
     fetchNewsPreview();
   }, []);
 
-  // Handle Google Sign-In init inside Modal
+  // Handle Google Sign-In One Tap Prompt
   useEffect(() => {
     if (!isModalOpen) return;
 
     let initialized = false;
-    const callbackRef = { current: handleGoogleCredentialResponse };
 
-    const initGoogle = () => {
+    const initGoogleOneTap = () => {
       if (!window.google?.accounts?.id || initialized) return;
 
       try {
         window.google.accounts.id.initialize({
           client_id: "853635780939-d5lqh389n4u7ltrjfngpki4o92nj8v26.apps.googleusercontent.com",
-          callback: (response) => callbackRef.current(response),
+          callback: handleGoogleCredentialResponse,
           auto_select: false,
           cancel_on_tap_outside: true,
           itp_support: true,
@@ -155,22 +154,14 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
         });
         initialized = true;
 
-        const container = document.getElementById("google-btn-container");
-        if (container) {
-          container.innerHTML = '';
-          window.google.accounts.id.renderButton(
-            container,
-            { theme: "outline", size: "large", width: 320, shape: "rectangular", text: "continue_with" }
-          );
-        }
-        // Fallback: Trigger Google One Tap (renders inline, immune to popup blockers)
+        // Trigger Google One Tap (renders inline, immune to popup blockers)
         window.google.accounts.id.prompt((notification) => {
           if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
             console.log("One Tap skipped:", notification.getNotDisplayedReason());
           }
         });
       } catch (err) {
-        console.error("Google Sign-In initialization failed:", err);
+        console.error("Google One Tap initialization failed:", err);
       }
     };
 
@@ -178,7 +169,7 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
     const interval = setInterval(() => {
       attempts++;
       if (window.google?.accounts?.id) {
-        initGoogle();
+        initGoogleOneTap();
         if (initialized) clearInterval(interval);
       } else if (attempts > 50) {
         console.warn("Google Identity Services library failed to load after 10s");
@@ -188,6 +179,48 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
 
     return () => clearInterval(interval);
   }, [isModalOpen]);
+
+  // Handle Google OAuth redirect callback inside popup window
+  useEffect(() => {
+    if (window.opener && window.location.hash.includes("id_token=")) {
+      try {
+        const hash = window.location.hash.substring(1);
+        const params = new URLSearchParams(hash);
+        const idToken = params.get("id_token");
+        if (idToken) {
+          window.opener.postMessage({ type: "GOOGLE_OAUTH_TOKEN", credential: idToken }, window.location.origin);
+          window.close();
+        }
+      } catch (err) {
+        console.error("Error in Google OAuth popup callback:", err);
+      }
+    }
+  }, []);
+
+  // Receive message from popup window in parent window
+  useEffect(() => {
+    const handleOAuthMessage = (event) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type === "GOOGLE_OAUTH_TOKEN" && event.data?.credential) {
+        handleGoogleCredentialResponse({ credential: event.data.credential });
+      }
+    };
+    window.addEventListener("message", handleOAuthMessage);
+    return () => window.removeEventListener("message", handleOAuthMessage);
+  }, []);
+
+  const handleCustomGoogleLogin = () => {
+    const clientId = "853635780939-d5lqh389n4u7ltrjfngpki4o92nj8v26.apps.googleusercontent.com";
+    const redirectUri = window.location.origin;
+    const scope = "openid email profile";
+    const responseType = "id_token";
+    const nonce = Math.random().toString(36).substring(2);
+    
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=${responseType}&scope=${encodeURIComponent(scope)}&nonce=${nonce}`;
+    
+    // Open popup window (synchronously triggered inside click handler to bypass popup blockers!)
+    window.open(authUrl, "GoogleSignIn", "width=500,height=600,left=100,top=100");
+  };
 
   const handleGoogleCredentialResponse = async (response) => {
     try {
@@ -901,7 +934,14 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
             </div>
 
             {/* Google Login Button */}
-            <div id="google-btn-container" className="flex justify-center mb-sm min-h-[40px]"></div>
+            <button 
+              type="button"
+              onClick={handleCustomGoogleLogin}
+              className="w-full py-3 bg-white hover:bg-neutral-100 text-neutral-800 font-semibold rounded-xl flex items-center justify-center gap-sm mb-sm transition-all text-sm border border-neutral-300"
+            >
+              <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" className="w-5 h-5" />
+              Continue with Google
+            </button>
 
             {/* Guest Action */}
             <button
