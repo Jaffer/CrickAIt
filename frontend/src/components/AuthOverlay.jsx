@@ -380,12 +380,6 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
               />
             </div>
             <button className="material-symbols-outlined text-on-surface-variant hover:text-grass-green" onClick={() => openAuth('login')}>notifications</button>
-            <button 
-              className={`material-symbols-outlined rounded-full p-1.5 transition-all duration-200 ${showSettings ? 'bg-grass-green/10 text-grass-green border border-grass-green/30' : 'text-on-surface-variant hover:text-grass-green'}`} 
-              onClick={() => setShowSettings(!showSettings)}
-            >
-              settings
-            </button>
             <button className="hidden md:block px-md py-xs bg-grass-green text-pitch-dark font-bold rounded-full hover:scale-95 transition-all duration-150 active:scale-95" onClick={() => openAuth('login')}>Sign In</button>
           </div>
         </nav>
