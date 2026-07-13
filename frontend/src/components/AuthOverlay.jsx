@@ -715,18 +715,18 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-xl">
                 <div className="flex flex-col gap-sm">
                   <span className="material-symbols-outlined text-grass-green text-3xl">smart_toy</span>
-                  <h3 className="font-headline-md text-lg">Precision AI</h3>
-                  <p className="text-text-muted font-body-md text-sm">Natural language queries yield instant, data-verified results from our proprietary cricket database spanning 150 years.</p>
+                  <h3 className="font-headline-md text-lg">Multi-Agent RAG</h3>
+                  <p className="text-text-muted font-body-md text-sm">Powered by FastAPI and LangGraph, our multi-agent architecture coordinates specialized profile extractors, routing nodes, and expert agents to answer complex cricket queries.</p>
                 </div>
                 <div className="flex flex-col gap-sm">
-                  <span className="material-symbols-outlined text-trophy-gold text-3xl">query_stats</span>
-                  <h3 className="font-headline-md text-lg">Predictive Modeling</h3>
-                  <p className="text-text-muted font-body-md text-sm">Advanced ML models provide real-time probability shifts as every ball is bowled, factoring in weather and player form.</p>
+                  <span className="material-symbols-outlined text-trophy-gold text-3xl">analytics</span>
+                  <h3 className="font-headline-md text-lg">Historical Data Search</h3>
+                  <p className="text-text-muted font-body-md text-sm">Search structured player statistics and match histories compiled into a localized FAISS vector database from raw ball-by-ball Cricsheet records.</p>
                 </div>
                 <div className="flex flex-col gap-sm">
-                  <span className="material-symbols-outlined text-primary text-3xl">shield</span>
-                  <h3 className="font-headline-md text-lg">Verified Precision</h3>
-                  <p className="text-text-muted font-body-md text-sm">Our data is triple-checked against official broadcast feeds to ensure you get the absolute truth in every statistic.</p>
+                  <span className="material-symbols-outlined text-primary text-3xl">bolt</span>
+                  <h3 className="font-headline-md text-lg">Real-Time Integration</h3>
+                  <p className="text-text-muted font-body-md text-sm">Retrieves active match details, scorecard updates, and current cricket news scraped dynamically from Cricbuzz and verified web search APIs.</p>
                 </div>
               </div>
             </section>
