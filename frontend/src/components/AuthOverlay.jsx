@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { API_URL } from '../services/api';
 import SettingsModal from './SettingsModal';
+import PrivacyPolicyModal from './PrivacyPolicyModal';
+import TermsOfServiceModal from './TermsOfServiceModal';
 
 function getBrowserFingerprint() {
   try {
@@ -43,10 +45,31 @@ function getBrowserFingerprint() {
   }
 }
 
+const getTeamFlag = (teamName) => {
+  if (!teamName) return null;
+  const name = teamName.toLowerCase().trim();
+  if (name.includes("india") || name.includes("ind")) return "https://flagcdn.com/w80/in.png";
+  if (name.includes("south africa") || name.includes("s. africa") || name.includes("rsa") || name.includes("sa")) return "https://flagcdn.com/w80/za.png";
+  if (name.includes("australia") || name.includes("aus")) return "https://flagcdn.com/w80/au.png";
+  if (name.includes("england") || name.includes("eng")) return "https://flagcdn.com/w80/gb.png";
+  if (name.includes("pakistan") || name.includes("pak")) return "https://flagcdn.com/w80/pk.png";
+  if (name.includes("new zealand") || name.includes("nz")) return "https://flagcdn.com/w80/nz.png";
+  if (name.includes("sri lanka") || name.includes("sl")) return "https://flagcdn.com/w80/lk.png";
+  if (name.includes("west indies") || name.includes("wi")) return "https://flagcdn.com/w80/jm.png"; 
+  if (name.includes("bangladesh") || name.includes("ban")) return "https://flagcdn.com/w80/bd.png";
+  if (name.includes("afghanistan") || name.includes("afg")) return "https://flagcdn.com/w80/af.png";
+  if (name.includes("zimbabwe") || name.includes("zim")) return "https://flagcdn.com/w80/zw.png";
+  if (name.includes("ireland") || name.includes("ire")) return "https://flagcdn.com/w80/ie.png";
+  if (name.includes("netherlands") || name.includes("ned")) return "https://flagcdn.com/w80/nl.png";
+  return null;
+};
+
 export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
   const [isModalOpen, setIsModalOpen] = useState(initialMode === 'signup');
   const [modalMode, setModalMode] = useState(initialMode);
   const [showSettings, setShowSettings] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
 
   // Re-open modal whenever parent changes initialMode (e.g. clicking a CTA)
   useEffect(() => {
@@ -61,6 +84,7 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [agreed, setAgreed] = useState(false);
 
   // Mock Chat Stateful Content
   const [mockMessages, setMockMessages] = useState([
@@ -230,6 +254,10 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (modalMode === 'signup' && !agreed) {
+      alert("You must agree to the User Terms / Agreement (ToS) to sign up.");
+      return;
+    }
     setLoading(true);
 
     let token = '';
@@ -473,6 +501,8 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
                       
                       const score1 = getScoreText(0);
                       const score2 = getScoreText(1);
+                      const flag1 = getTeamFlag(team1);
+                      const flag2 = getTeamFlag(team2);
                       
                       return (
                         <div onClick={() => openAuth('signup')} className="md:col-span-8 group relative overflow-hidden rounded-xl border-t-4 border-trophy-gold bg-stadium-grey shadow-xl p-lg cursor-pointer">
@@ -483,7 +513,11 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
                           <div className="flex flex-col md:flex-row items-center justify-between gap-xl">
                             <div className="flex flex-col items-center gap-sm">
                               <div className="w-20 h-20 rounded-full bg-grass-green/10 flex items-center justify-center border-4 border-stadium-grey shadow-lg overflow-hidden text-grass-green font-bold text-xl">
-                                {team1.substring(0, 2).toUpperCase()}
+                                {flag1 ? (
+                                  <img className="w-full h-full object-cover" alt={`${team1} flag`} src={flag1} />
+                                ) : (
+                                  team1.substring(0, 2).toUpperCase()
+                                )}
                               </div>
                               <h3 className="font-headline-md text-headline-md text-center max-w-[120px] truncate">{team1}</h3>
                               <p className="font-stats-num text-stats-num text-grass-green">{score1}</p>
@@ -495,7 +529,11 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
                             </div>
                             <div className="flex flex-col items-center gap-sm">
                               <div className="w-20 h-20 rounded-full bg-grass-green/10 flex items-center justify-center border-4 border-stadium-grey shadow-lg overflow-hidden text-grass-green font-bold text-xl">
-                                {team2.substring(0, 2).toUpperCase()}
+                                {flag2 ? (
+                                  <img className="w-full h-full object-cover" alt={`${team2} flag`} src={flag2} />
+                                ) : (
+                                  team2.substring(0, 2).toUpperCase()
+                                )}
                               </div>
                               <h3 className="font-headline-md text-headline-md text-center max-w-[120px] truncate">{team2}</h3>
                               <p className="font-stats-num text-stats-num text-on-surface-variant">{score2}</p>
@@ -508,40 +546,14 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
                       );
                     })()
                   ) : (
-                    <div onClick={() => openAuth('signup')} className="md:col-span-8 group relative overflow-hidden rounded-xl border-t-4 border-trophy-gold bg-stadium-grey shadow-xl p-lg cursor-pointer">
-                      <div className="flex justify-between items-start mb-lg">
-                        <span className="px-sm py-base rounded-full bg-pitch-dark text-grass-green border border-grass-green/30 text-xs font-label-caps">ICC WORLD TEST CHAMPIONSHIP</span>
-                        <span className="text-on-surface-variant font-stats-num text-stats-num text-sm">DAY 4, OVER 82.4</span>
+                    <div className="md:col-span-8 group relative overflow-hidden rounded-xl border border-stadium-grey bg-surface-container-low p-lg flex flex-col justify-center items-center text-center min-h-[300px]">
+                      <div className="w-16 h-16 rounded-full bg-grass-green/10 flex items-center justify-center mb-md text-grass-green animate-pulse">
+                        <span className="material-symbols-outlined text-4xl">sports_cricket</span>
                       </div>
-                      <div className="flex flex-col md:flex-row items-center justify-between gap-xl">
-                        <div className="flex flex-col items-center gap-sm">
-                          <div className="w-20 h-20 rounded-full bg-blue-900 flex items-center justify-center border-4 border-stadium-grey shadow-lg overflow-hidden text-white font-bold text-xl">IN</div>
-                          <h3 className="font-headline-md text-headline-md">INDIA</h3>
-                          <p className="font-stats-num text-stats-num text-grass-green">432 &amp; 281/4</p>
-                        </div>
-                        <div className="text-center">
-                          <span className="font-label-caps text-on-surface-variant block mb-base uppercase text-xs">Target: 412</span>
-                          <span className="font-headline-md text-headline-md text-trophy-gold">VS</span>
-                          <span className="block mt-base font-body-md text-text-muted text-sm">India leads by 302 runs</span>
-                        </div>
-                        <div className="flex flex-col items-center gap-sm">
-                          <div className="w-20 h-20 rounded-full bg-green-900 flex items-center justify-center border-4 border-stadium-grey shadow-lg overflow-hidden text-white font-bold text-xl">SA</div>
-                          <h3 className="font-headline-md text-headline-md">S. AFRICA</h3>
-                          <p className="font-stats-num text-stats-num text-on-surface-variant">411</p>
-                        </div>
-                      </div>
-                      <div className="mt-lg pt-lg border-t border-outline-variant/30 flex justify-center">
-                        <div className="flex gap-md overflow-x-auto pb-xs scroll-hide font-mono text-sm">
-                          <div className="text-center px-md border-r border-outline-variant/30">
-                            <span className="text-label-caps text-text-muted text-xs block">BATTER</span>
-                            <p className="font-stats-num text-stats-num text-sm">Kohli 104*</p>
-                          </div>
-                          <div className="text-center px-md">
-                            <span className="text-label-caps text-text-muted text-xs block">BOWLER</span>
-                            <p className="font-stats-num text-stats-num text-sm">Rabada 3/88</p>
-                          </div>
-                        </div>
-                      </div>
+                      <h3 className="font-headline-md text-headline-md text-lg mb-xs">No Live Matches</h3>
+                      <p className="text-on-surface-variant text-sm max-w-md">
+                        There are no live matches currently in progress. Sign up to customize match alerts, view real-time ball-by-ball summaries, or browse complete schedules.
+                      </p>
                     </div>
                   )}
 
@@ -557,6 +569,8 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
                         if (!s || s.r === 0) return "Yet to bat";
                         return `${s.r}/${s.w}`;
                       };
+                      const flag1 = getTeamFlag(team1);
+                      const flag2 = getTeamFlag(team2);
                       
                       return (
                         <div onClick={() => openAuth('signup')} className="md:col-span-4 rounded-xl border border-stadium-grey bg-surface-container-low p-md flex flex-col justify-between hover:border-grass-green/50 transition-colors cursor-pointer group">
@@ -567,8 +581,12 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
                           <div className="space-y-sm my-md">
                             <div className="flex justify-between items-center">
                               <div className="flex items-center gap-xs">
-                                <div className="w-6 h-6 bg-grass-green/20 rounded-full flex items-center justify-center text-[10px] text-grass-green font-bold">
-                                  {team1.substring(0, 2).toUpperCase()}
+                                <div className="w-6 h-6 bg-grass-green/20 rounded-full flex items-center justify-center overflow-hidden text-[10px] text-grass-green font-bold">
+                                  {flag1 ? (
+                                    <img className="w-full h-full object-cover" alt={`${team1} flag`} src={flag1} />
+                                  ) : (
+                                    team1.substring(0, 2).toUpperCase()
+                                  )}
                                 </div>
                                 <span className="font-headline-md text-sm truncate max-w-[80px]">{team1}</span>
                               </div>
@@ -576,8 +594,12 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
                             </div>
                             <div className="flex justify-between items-center">
                               <div className="flex items-center gap-xs">
-                                <div className="w-6 h-6 bg-grass-green/20 rounded-full flex items-center justify-center text-[10px] text-grass-green font-bold">
-                                  {team2.substring(0, 2).toUpperCase()}
+                                <div className="w-6 h-6 bg-grass-green/20 rounded-full flex items-center justify-center overflow-hidden text-[10px] text-grass-green font-bold">
+                                  {flag2 ? (
+                                    <img className="w-full h-full object-cover" alt={`${team2} flag`} src={flag2} />
+                                  ) : (
+                                    team2.substring(0, 2).toUpperCase()
+                                  )}
                                 </div>
                                 <span className="font-headline-md text-sm truncate max-w-[80px]">{team2}</span>
                               </div>
@@ -589,28 +611,15 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
                       );
                     })()
                   ) : (
-                    <div onClick={() => openAuth('signup')} className="md:col-span-4 rounded-xl border border-stadium-grey bg-surface-container-low p-md flex flex-col justify-between hover:border-grass-green/50 transition-colors cursor-pointer group">
-                      <div className="flex justify-between items-start">
-                        <span className="font-label-caps text-text-muted text-[10px] uppercase">Big Bash League</span>
-                        <span className="material-symbols-outlined text-trophy-gold">bolt</span>
+                    <div onClick={() => openAuth('signup')} className="md:col-span-4 rounded-xl border border-stadium-grey bg-surface-container-low p-md flex flex-col justify-center items-center text-center min-h-[300px] cursor-pointer group hover:border-grass-green/50 transition-colors">
+                      <div className="w-12 h-12 rounded-full bg-trophy-gold/10 flex items-center justify-center mb-sm text-trophy-gold">
+                        <span className="material-symbols-outlined text-2xl">upcoming</span>
                       </div>
-                      <div className="space-y-sm my-md">
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center gap-xs">
-                            <div className="w-6 h-6 bg-pink-500 rounded-full"></div>
-                            <span className="font-headline-md text-sm">SYD SIX</span>
-                          </div>
-                          <span className="font-stats-num text-sm font-bold">188/6</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center gap-xs opacity-50">
-                            <div className="w-6 h-6 bg-blue-400 rounded-full"></div>
-                            <span className="font-headline-md text-sm">ADL STR</span>
-                          </div>
-                          <span className="font-stats-num text-sm text-text-muted">Yet to bat</span>
-                        </div>
-                      </div>
-                      <p className="text-xs font-body-md text-grass-green">Sixers opted to bat. Innings break soon.</p>
+                      <h4 className="font-headline-md text-md mb-xs font-semibold">Upcoming Schedule</h4>
+                      <p className="text-on-surface-variant text-xs mb-md max-w-[180px]">Check out upcoming international tours, test series and domestic T20 leagues.</p>
+                      <button className="text-grass-green font-label-caps text-[11px] flex items-center gap-xs group-hover:underline">
+                        VIEW CALENDAR <span className="material-symbols-outlined text-[14px]">chevron_right</span>
+                      </button>
                     </div>
                   )}
 
@@ -740,7 +749,7 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
         <div className="flex flex-wrap justify-center gap-md">
           <a className="font-label-caps text-xs text-on-surface-variant hover:text-grass-green underline transition-all duration-300" href="#" onClick={(e) => { e.preventDefault(); openAuth('login'); }}>About Us</a>
           <a className="font-label-caps text-xs text-on-surface-variant hover:text-grass-green underline transition-all duration-300" href="#" onClick={(e) => { e.preventDefault(); openAuth('login'); }}>Terms of Service</a>
-          <a className="font-label-caps text-xs text-on-surface-variant hover:text-grass-green underline transition-all duration-300" href="#" onClick={(e) => { e.preventDefault(); openAuth('login'); }}>Privacy Policy</a>
+          <a className="font-label-caps text-xs text-on-surface-variant hover:text-grass-green underline transition-all duration-300" href="#" onClick={(e) => { e.preventDefault(); setShowPrivacy(true); }}>Privacy Policy</a>
           <a className="font-label-caps text-xs text-on-surface-variant hover:text-grass-green underline transition-all duration-300" href="#" onClick={(e) => { e.preventDefault(); openAuth('login'); }}>Contact Support</a>
           <a className="font-label-caps text-xs text-on-surface-variant hover:text-grass-green underline transition-all duration-300" href="#" onClick={(e) => { e.preventDefault(); openAuth('login'); }}>API Access</a>
         </div>
@@ -854,6 +863,29 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
                 data-size="invisible"
               ></div>
 
+              {modalMode === 'signup' && (
+                <div className="flex items-start gap-xs text-xs text-on-surface-variant my-md select-none">
+                  <input 
+                    type="checkbox" 
+                    id="agree-checkbox" 
+                    checked={agreed}
+                    onChange={(e) => setAgreed(e.target.checked)}
+                    required
+                    className="mt-0.5 rounded border-outline-variant bg-surface-container text-grass-green focus:ring-0 focus:ring-offset-0 w-4 h-4 cursor-pointer"
+                  />
+                  <label htmlFor="agree-checkbox" className="cursor-pointer text-text-muted">
+                    I agree to the{' '}
+                    <button 
+                      type="button" 
+                      onClick={(e) => { e.stopPropagation(); setShowTerms(true); }}
+                      className="text-grass-green hover:underline font-bold"
+                    >
+                      User Terms / Agreement (ToS)
+                    </button>
+                  </label>
+                </div>
+              )}
+
               <button 
                 type="submit" 
                 className="w-full py-3 bg-grass-green text-pitch-dark font-bold rounded-xl hover:shadow-[0_0_20px_rgba(16,163,127,0.4)] transition-all active:scale-95 text-sm" 
@@ -910,6 +942,8 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
           </div>
         </div>
       )}
+      {showPrivacy && <PrivacyPolicyModal onClose={() => setShowPrivacy(false)} />}
+      {showTerms && <TermsOfServiceModal onClose={() => setShowTerms(false)} />}
     </div>
   );
 }

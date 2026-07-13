@@ -983,7 +983,20 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
   );
 
   if (isInline) {
-    return settingsLayout;
+    return (
+      <div className="relative w-full max-w-5xl flex flex-col gap-md">
+        {/* Close Button */}
+        <button 
+          className="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-surface-container-high border border-stadium-grey flex items-center justify-center text-text-muted hover:text-on-background text-2xl transition-colors z-20 font-semibold shadow-lg"
+          onClick={onClose}
+          type="button"
+          aria-label="Close Settings"
+        >
+          &times;
+        </button>
+        {settingsLayout}
+      </div>
+    );
   }
 
   return (

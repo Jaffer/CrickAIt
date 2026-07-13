@@ -173,13 +173,12 @@ export default function ChatInterface({
           </div>
         )}
 
-        <div className="messages-wrapper">
+        <div className="messages-wrapper max-w-4xl mx-auto px-md py-lg flex flex-col gap-md">
           {messages.map((m, i) => (
-            <div key={i} className={`message-wrapper ${m.role === 'user' ? 'user-message' : 'bot-message'}`}>
-              <div className={`message ${m.role === 'user' ? 'user' : 'bot'}`}>
-                <div className="message-avatar">{m.role === 'user' ? '👤' : '🏏'}</div>
+            <div key={i} className={`flex flex-col gap-xs max-w-[80%] ${m.role === 'user' ? 'ml-auto items-end' : 'items-start'}`}>
+              <div className={`p-sm rounded-xl rounded-tl-none border-l-4 ${m.role === 'user' ? 'bg-pitch-dark text-on-surface border border-outline-variant/30 border-l-0 rounded-tr-none' : 'bg-stadium-grey text-on-surface border-grass-green'}`}>
                 <div
-                  className="message-content"
+                  className="message-content font-body-md"
                   dangerouslySetInnerHTML={{
                     __html: m.role === 'user'
                       ? DOMPurify.sanitize(m.content)
@@ -187,20 +186,23 @@ export default function ChatInterface({
                   }}
                 />
               </div>
+              <span className="text-[10px] font-label-caps text-text-muted px-2">
+                {m.role === 'user' ? 'YOU' : 'CRICKALT AI'}
+              </span>
             </div>
           ))}
           {loading && (
-            <div className="message-wrapper bot-message">
-              <div className="message bot">
-                <div className="message-avatar">🏏</div>
-                <div className="message-content">
-                  <div className="cricket-loader" style={{ display: 'flex', gap: '6px' }}>
-                    <div className="cricket-loader-bouncer"><div className="cricket-loader-ball"></div></div>
-                    <div className="cricket-loader-bouncer" style={{ animationDelay: '0.15s' }}><div className="cricket-loader-ball"></div></div>
-                    <div className="cricket-loader-bouncer" style={{ animationDelay: '0.3s' }}><div className="cricket-loader-ball"></div></div>
-                  </div>
+            <div className="flex flex-col gap-xs max-w-[80%] items-start">
+              <div className="p-sm rounded-xl rounded-tl-none border-l-4 bg-stadium-grey text-on-surface border-grass-green">
+                <div className="cricket-loader" style={{ display: 'flex', gap: '6px' }}>
+                  <div className="cricket-loader-bouncer"><div className="cricket-loader-ball"></div></div>
+                  <div className="cricket-loader-bouncer" style={{ animationDelay: '0.15s' }}><div className="cricket-loader-ball"></div></div>
+                  <div className="cricket-loader-bouncer" style={{ animationDelay: '0.3s' }}><div className="cricket-loader-ball"></div></div>
                 </div>
               </div>
+              <span className="text-[10px] font-label-caps text-text-muted px-2">
+                CRICKALT AI
+              </span>
             </div>
           )}
           <div ref={messagesEndRef} />
@@ -208,24 +210,23 @@ export default function ChatInterface({
       </div>
 
       <div className="input-area">
-        <div className="input-container">
-          <textarea
+        <form className="flex items-center gap-sm relative w-full" onSubmit={(e) => { e.preventDefault(); handleSend(); }}>
+          <input 
+            className="w-full bg-surface-container border border-outline-variant focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-full px-md py-sm text-on-surface placeholder:text-on-surface-variant/50 pr-12 text-sm" 
+            placeholder="Ask CrickAlt anything..." 
+            type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
-            }}
-            placeholder="Message CrickAIt..."
-            rows="1"
-            id="chat-input"
+            disabled={loading}
           />
-          <button className="send-btn" onClick={() => handleSend()} disabled={!input.trim() || loading}>
-            <i className="fa-solid fa-arrow-up"></i>
+          <button 
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-xs bg-grass-green text-pitch-dark rounded-full hover:scale-105 transition-transform flex items-center justify-center w-8 h-8" 
+            type="submit"
+            disabled={!input.trim() || loading}
+          >
+            <span className="material-symbols-outlined text-[18px]">send</span>
           </button>
-        </div>
+        </form>
       </div>
     </main>
   );
