@@ -3,14 +3,14 @@
     --bg-sidebar: var(--surface, #111317);
     --text-primary: var(--text, #e2e2e8);
     --text-secondary: var(--text-muted, #A0AAB2);
-    --border-color: rgba(255, 255, 255, 0.08);
+    --border-color: var(--border-val, rgba(255, 255, 255, 0.08));
     --hover-color: var(--surface-light, #1E2024);
     --accent-color: var(--accent, #10a37f);
     --accent-hover: #0e8c6c;
     --user-msg-bg: rgba(255, 255, 255, 0.05);
     --bot-msg-bg: rgba(26, 29, 36, 0.6);
     --input-bg: rgba(12, 14, 18, 0.6);
-    --surface-glass: rgba(26, 29, 36, 0.6);
+    --surface-glass: var(--glass-bg, rgba(26, 29, 36, 0.6));
     --font-display: 'Sora', sans-serif;
     --font-body: 'Inter', sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
@@ -2446,13 +2446,16 @@ body {
 .modern-select, .modern-input {
     width: 100%;
     padding: 10px 14px;
-    background: var(--hover-color);
+    background-color: var(--hover-color);
     border: 1px solid var(--border-color);
     color: var(--text-primary);
     border-radius: 10px;
     font-family: inherit;
     font-size: 0.95rem;
     transition: all 0.2s ease;
+}
+.modern-select {
+    padding-right: 36px !important;
 }
 .modern-select:focus, .modern-input:focus {
     border-color: var(--accent-color);

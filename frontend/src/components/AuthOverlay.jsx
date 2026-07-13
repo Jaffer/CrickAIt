@@ -192,10 +192,30 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+
+    let token = '';
+    if (window.turnstile) {
+      token = window.turnstile.getResponse();
+      if (!token) {
+        try {
+          token = await new Promise((resolve, reject) => {
+            window.turnstile.execute('.cf-turnstile', {
+              callback: (t) => resolve(t),
+              'error-callback': (err) => reject(err)
+            });
+          });
+        } catch (err) {
+          alert('Security CAPTCHA verification failed. Please try again.');
+          setLoading(false);
+          return;
+        }
+      }
+    }
+
     const endpoint = modalMode === 'login' ? '/auth/login' : '/auth/register';
     const payload = modalMode === 'login' 
-        ? { username: email, password } 
-        : { username, email, password };
+        ? { username: email, password, turnstile_token: token } 
+        : { username, email, password, turnstile_token: token };
 
     try {
       const res = await fetch(`${API_URL}${endpoint}`, {
@@ -206,6 +226,7 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
       const data = await res.json();
       if (!res.ok) {
         alert(data.detail || 'Authentication failed');
+        if (window.turnstile) window.turnstile.reset();
       } else {
         localStorage.setItem('crickait_token', data.token);
         localStorage.setItem('crickait_username', data.username);
@@ -214,6 +235,7 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
       }
     } catch (err) {
       alert('Network error occurred');
+      if (window.turnstile) window.turnstile.reset();
     } finally {
       setLoading(false);
     }
@@ -637,6 +659,13 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
                   placeholder="••••••••"
                 />
               </div>
+
+              {/* Invisible Turnstile CAPTCHA */}
+              <div 
+                className="cf-turnstile" 
+                data-sitekey="0x4AAAAAAD09r1W2hg2_y0AO" 
+                data-size="invisible"
+              ></div>
 
               <button 
                 type="submit" 

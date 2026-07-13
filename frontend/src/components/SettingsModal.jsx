@@ -146,6 +146,8 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
       root.style.setProperty('--accent', '#00d26a');
       root.style.setProperty('--text', '#f1f1f1');
       root.style.setProperty('--text-muted', '#a0aab2');
+      root.style.setProperty('--border-val', 'rgba(255, 255, 255, 0.08)');
+      root.style.setProperty('--glass-bg', 'rgba(19, 44, 29, 0.6)');
     } else if (themeValue === 'light') {
       root.style.setProperty('--bg-color', '#f5f7fa');
       root.style.setProperty('--surface', '#ffffff');
@@ -153,6 +155,8 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
       root.style.setProperty('--text', '#2d3436');
       root.style.setProperty('--text-muted', '#636e72');
       root.style.setProperty('--accent', '#00b894');
+      root.style.setProperty('--border-val', 'rgba(0, 0, 0, 0.08)');
+      root.style.setProperty('--glass-bg', 'rgba(255, 255, 255, 0.6)');
     } else {
       // Default Dark
       root.style.setProperty('--bg-color', '#0f1115');
@@ -161,6 +165,8 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
       root.style.setProperty('--text', '#f1f1f1');
       root.style.setProperty('--text-muted', '#a0aab2');
       root.style.setProperty('--accent', '#10a37f');
+      root.style.setProperty('--border-val', 'rgba(255, 255, 255, 0.08)');
+      root.style.setProperty('--glass-bg', 'rgba(26, 29, 36, 0.6)');
     }
     localStorage.setItem('crickait_theme', themeValue);
   };
@@ -631,7 +637,7 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
                     <select 
                       value={theme}
                       onChange={(e) => { setTheme(e.target.value); applyTheme(e.target.value); }}
-                      className="bg-surface-container border border-outline-variant/30 text-on-surface text-xs rounded-lg px-3 py-1.5 focus:ring-grass-green"
+                      className="bg-surface-container border border-outline-variant/30 text-on-surface text-xs rounded-lg pl-3 pr-8 py-1.5 focus:ring-grass-green"
                     >
                       <option value="dark">Classic Dark</option>
                       <option value="green">Pitch Green</option>
@@ -653,7 +659,7 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
                     <select 
                       value={language}
                       onChange={(e) => setLanguage(e.target.value)}
-                      className="bg-surface-container border border-outline-variant/30 text-on-surface text-xs rounded-lg px-3 py-1.5 focus:ring-grass-green"
+                      className="bg-surface-container border border-outline-variant/30 text-on-surface text-xs rounded-lg pl-3 pr-8 py-1.5 focus:ring-grass-green"
                     >
                       <option>English (UK)</option>
                       <option>Hindi</option>
@@ -676,7 +682,7 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
                     <select 
                       value={expertise} 
                       onChange={(e) => setExpertise(e.target.value)}
-                      className="w-full bg-surface-container border border-outline-variant/30 focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-xl px-md py-3 text-on-surface text-sm"
+                      className="w-full bg-surface-container border border-outline-variant/30 focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-xl pl-md pr-10 py-3 text-on-surface text-sm"
                     >
                       <option value="Casual">Casual Fan</option>
                       <option value="Standard">Standard</option>

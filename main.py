@@ -298,11 +298,14 @@ class RegisterRequest(BaseModel):
     username: str
     email: str
     password: str
+    turnstile_token: Optional[str] = None
 
 
 class LoginRequest(BaseModel):
     username: str
     password: str
+    turnstile_token: Optional[str] = None
+
 
 
 class GoogleLoginRequest(BaseModel):
@@ -786,8 +789,39 @@ app.add_middleware(
 )
 
 
+TURNSTILE_SECRET_KEY = os.getenv("TURNSTILE_SECRET_KEY", "")
+
+async def verify_turnstile(token: Optional[str]) -> bool:
+    if not TURNSTILE_SECRET_KEY:
+        logger.warning("TURNSTILE_SECRET_KEY not set. Bypassing Turnstile verification.")
+        return True
+    if not token:
+        logger.warning("Turnstile token missing.")
+        return False
+    url = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
+    payload = {
+        "secret": TURNSTILE_SECRET_KEY,
+        "response": token,
+    }
+    try:
+        client = get_http_client()
+        res = await client.post(url, data=payload, timeout=5.0)
+        data = res.json()
+        return data.get("success", False)
+    except Exception as e:
+        logger.error("Turnstile network verification failed: %s", e)
+        return False
+
+
 @app.post("/auth/register")
 async def register(request: RegisterRequest):
+    # Verify CAPTCHA
+    if not await verify_turnstile(request.turnstile_token):
+        raise HTTPException(
+            status_code=400,
+            detail="Security CAPTCHA verification failed. Please try again."
+        )
+
     username = request.username.strip().lower()
     email = request.email.strip().lower()
     password = request.password
@@ -917,6 +951,13 @@ async def guest_login(request: GuestLoginRequest):
 
 @app.post("/auth/login")
 async def login(request: LoginRequest):
+    # Verify CAPTCHA
+    if not await verify_turnstile(request.turnstile_token):
+        raise HTTPException(
+            status_code=400,
+            detail="Security CAPTCHA verification failed. Please try again."
+        )
+
     username = request.username.strip().lower()
     password = request.password
 

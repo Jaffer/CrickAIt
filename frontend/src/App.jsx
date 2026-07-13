@@ -36,6 +36,10 @@ function App() {
       root.style.setProperty('--surface', '#132c1d');
       root.style.setProperty('--surface-light', '#1e422c');
       root.style.setProperty('--accent', '#00d26a');
+      root.style.setProperty('--text', '#f1f1f1');
+      root.style.setProperty('--text-muted', '#a0aab2');
+      root.style.setProperty('--border-val', 'rgba(255, 255, 255, 0.08)');
+      root.style.setProperty('--glass-bg', 'rgba(19, 44, 29, 0.6)');
     } else if (savedTheme === 'light') {
       root.style.setProperty('--bg-color', '#f5f7fa');
       root.style.setProperty('--surface', '#ffffff');
@@ -43,13 +47,18 @@ function App() {
       root.style.setProperty('--text', '#2d3436');
       root.style.setProperty('--text-muted', '#636e72');
       root.style.setProperty('--accent', '#00b894');
+      root.style.setProperty('--border-val', 'rgba(0, 0, 0, 0.08)');
+      root.style.setProperty('--glass-bg', 'rgba(255, 255, 255, 0.6)');
     } else {
+      // Default Dark
       root.style.setProperty('--bg-color', '#0f1115');
       root.style.setProperty('--surface', '#1a1d24');
       root.style.setProperty('--surface-light', '#252932');
       root.style.setProperty('--text', '#f1f1f1');
       root.style.setProperty('--text-muted', '#a0aab2');
       root.style.setProperty('--accent', '#10a37f');
+      root.style.setProperty('--border-val', 'rgba(255, 255, 255, 0.08)');
+      root.style.setProperty('--glass-bg', 'rgba(26, 29, 36, 0.6)');
     }
 
     const handleAuthExpired = () => handleLogout();

@@ -16,44 +16,44 @@
           extend: {
             "colors": {
                     "primary-container": "#12a480",
-                    "surface-container-high": "#282a2e",
+                    "surface-container-high": "var(--surface-light)",
                     "on-primary-fixed-variant": "#00513d",
-                    "surface-container-low": "#1a1c20",
-                    "stadium-grey": "#1A1D24",
-                    "surface-container-highest": "#333539",
+                    "surface-container-low": "var(--surface-light)",
+                    "stadium-grey": "var(--border-val)",
+                    "surface-container-highest": "var(--surface-light)",
                     "outline": "#86948d",
-                    "surface-container-lowest": "#0c0e12",
+                    "surface-container-lowest": "var(--bg-color)",
                     "on-error-container": "#ffdad6",
-                    "on-surface-variant": "#bccac2",
+                    "on-surface-variant": "var(--text-muted)",
                     "primary-fixed": "#7ff8cf",
-                    "on-background": "#e2e2e8",
+                    "on-background": "var(--text)",
                     "on-tertiary": "#2f3131",
-                    "outline-variant": "#3d4a44",
-                    "background": "#111317",
+                    "outline-variant": "var(--border-val)",
+                    "background": "var(--bg-color)",
                     "tertiary-fixed": "#e2e2e2",
                     "secondary-fixed-dim": "#e9c400",
                     "trophy-gold": "#FFD700",
-                    "surface-variant": "#333539",
-                    "surface-bright": "#37393e",
+                    "surface-variant": "var(--surface-light)",
+                    "surface-bright": "var(--surface-light)",
                     "on-primary": "#00382a",
                     "on-primary-container": "#003024",
-                    "primary": "#61dbb4",
+                    "primary": "var(--accent)",
                     "tertiary": "#c6c6c7",
                     "secondary-fixed": "#ffe16d",
                     "secondary-container": "#ffdb3c",
-                    "surface-dim": "#111317",
+                    "surface-dim": "var(--bg-color)",
                     "secondary": "#fff9ef",
                     "tertiary-container": "#909191",
                     "error": "#ffb4ab",
-                    "inverse-surface": "#e2e2e8",
-                    "primary-fixed-dim": "#61dbb4",
+                    "inverse-surface": "var(--text)",
+                    "primary-fixed-dim": "var(--accent)",
                     "error-container": "#93000a",
-                    "surface-container": "#1e2024",
-                    "surface": "#111317",
+                    "surface-container": "var(--surface)",
+                    "surface": "var(--surface)",
                     "on-secondary-container": "#725f00",
                     "on-tertiary-fixed": "#1a1c1c",
-                    "text-muted": "#A0AAB2",
-                    "pitch-dark": "#0F1115",
+                    "text-muted": "var(--text-muted)",
+                    "pitch-dark": "var(--bg-color)",
                     "tertiary-fixed-dim": "#c6c6c7",
                     "on-secondary-fixed-variant": "#544600",
                     "on-tertiary-fixed-variant": "#454747",
@@ -61,12 +61,12 @@
                     "on-tertiary-container": "#282a2a",
                     "on-secondary-fixed": "#221b00",
                     "inverse-primary": "#006c52",
-                    "grass-green": "#10A37F",
-                    "on-surface": "#e2e2e8",
+                    "grass-green": "var(--accent)",
+                    "on-surface": "var(--text)",
                     "on-secondary": "#3a3000",
                     "on-error": "#690005",
                     "on-primary-fixed": "#002117",
-                    "surface-tint": "#61dbb4"
+                    "surface-tint": "var(--accent)"
             },
             "borderRadius": {
                     "DEFAULT": "0.25rem",
@@ -110,15 +110,15 @@
     </script>
     <style>
         .glass-card {
-            background: rgba(26, 29, 36, 0.6);
+            background: var(--glass-bg, rgba(26, 29, 36, 0.6));
             backdrop-filter: blur(12px);
-            border: 1px solid rgba(16, 163, 127, 0.2);
+            border: 1px solid var(--border-val, rgba(16, 163, 127, 0.2));
         }
         .glass-panel {
-            background: rgba(30, 32, 36, 0.7);
+            background: var(--glass-bg, rgba(30, 32, 36, 0.7));
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(134, 148, 141, 0.1);
+            border: 1px solid var(--border-val, rgba(134, 148, 141, 0.1));
         }
         .ai-glow {
             box-shadow: 0 0 40px -10px rgba(16, 163, 127, 0.3);
@@ -140,6 +140,7 @@
     <title>CrickAIt | AI-Powered Cricket Insights</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     <!-- EmailJS integration -->
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <script type="text/javascript">
