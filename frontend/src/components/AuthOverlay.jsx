@@ -200,39 +200,83 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
   };
 
   return (
-    <div className="auth-overlay" style={{display: 'flex'}}>
-      <div className="auth-card">
-        <button className="close-auth" onClick={handleClose} aria-label="Close Auth Overlay">&times;</button>
-        <div className="auth-logo"><img src="/favicon.png" alt="CrickAIt Logo" /></div>
-        <h2>Welcome to CrickAIt</h2>
-        <form onSubmit={handleSubmit}>
-          {mode === 'signup' && (
+    <div className="auth-overlay">
+      <div className="auth-form-side">
+        <div className="auth-card">
+          <button className="close-auth" onClick={handleClose} aria-label="Close Auth Overlay">&times;</button>
+          <div className="auth-logo"><img src="/favicon.png" alt="CrickAIt Logo" /></div>
+          <h2>Welcome to CrickAIt</h2>
+          <form onSubmit={handleSubmit}>
+            {mode === 'signup' && (
+              <div className="input-group">
+                <label>Username</label>
+                <input type="text" value={username} onChange={e => setUsername(e.target.value)} required />
+              </div>
+            )}
             <div className="input-group">
-              <label>Username</label>
-              <input type="text" value={username} onChange={e => setUsername(e.target.value)} required />
+              <label>{mode === 'login' ? 'Email / Username' : 'Email'}</label>
+              <input type="text" value={email} onChange={e => setEmail(e.target.value)} required />
             </div>
-          )}
-          <div className="input-group">
-            <label>{mode === 'login' ? 'Email / Username' : 'Email'}</label>
-            <input type="text" value={email} onChange={e => setEmail(e.target.value)} required />
+            <div className="input-group">
+              <label>Password</label>
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)} required />
+            </div>
+            <button type="submit" className="auth-submit-btn" disabled={loading}>
+              {loading ? 'Processing...' : (mode === 'login' ? 'Sign In' : 'Sign Up')}
+            </button>
+          </form>
+          <div className="auth-divider"><span>OR</span></div>
+          <div id="google-btn-container" style={{display: 'flex', justifyContent: 'center', marginBottom: '20px'}}></div>
+          <div className="auth-toggle">
+            <span>{mode === 'login' ? "Don't have an account?" : "Already have an account?"}</span>
+            <button onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}>
+              {mode === 'login' ? 'Sign Up' : 'Sign In'}
+            </button>
           </div>
-          <div className="input-group">
-            <label>Password</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)} required />
-          </div>
-          <button type="submit" className="auth-submit-btn" disabled={loading}>
-            {loading ? 'Processing...' : (mode === 'login' ? 'Sign In' : 'Sign Up')}
-          </button>
-        </form>
-        <div className="auth-divider"><span>OR</span></div>
-        <div id="google-btn-container" style={{display: 'flex', justifyContent: 'center', marginBottom: '20px'}}></div>
-        <div className="auth-toggle">
-          <span>{mode === 'login' ? "Don't have an account?" : "Already have an account?"}</span>
-          <button onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}>
-            {mode === 'login' ? 'Sign Up' : 'Sign In'}
-          </button>
         </div>
       </div>
+
+      <aside className="auth-visual-side">
+        <div className="auth-visual-bg"></div>
+        <div className="auth-visual-overlay"></div>
+        
+        <div className="auth-visual-header">
+          <div className="auth-visual-logo">
+            <i className="fa-solid fa-circle-nodes"></i>
+          </div>
+          <div className="auth-visual-brand-text">
+            <h3>CrickAIt</h3>
+            <span>Precision Cricket AI</span>
+          </div>
+        </div>
+
+        <div className="auth-visual-cards">
+          <div className="auth-floating-card card-left">
+            <div className="auth-card-title accent-green">
+              <i className="fa-solid fa-bolt"></i>
+              <span>AI Predictive Insight</span>
+            </div>
+            <p>"Wicket probability in the next 3 overs is 64% based on bowler-batter matchups."</p>
+          </div>
+
+          <div className="auth-floating-card card-right">
+            <div className="auth-card-title accent-gold">
+              <i className="fa-solid fa-star"></i>
+              <span>Live Premium Edge</span>
+            </div>
+            <div className="match-score-row">
+              <div className="match-score-info">
+                <h4>IND 182/4</h4>
+                <span>Overs 18.2</span>
+              </div>
+              <div className="match-score-prob">
+                <span className="prob-val">+12.4</span>
+                <span className="prob-label">Win Prob Change</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
     </div>
   );
 }

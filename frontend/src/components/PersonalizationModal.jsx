@@ -58,7 +58,7 @@ export default function PersonalizationModal({ onClose, onShowAlert }) {
       root.style.setProperty('--surface-light', '#252932');
       root.style.setProperty('--text', '#f1f1f1');
       root.style.setProperty('--text-muted', '#a0aab2');
-      root.style.setProperty('--accent', '#00d26a');
+      root.style.setProperty('--accent', '#10a37f');
     }
     localStorage.setItem('crickait_theme', themeValue);
   };
