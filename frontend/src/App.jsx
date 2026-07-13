@@ -1,10 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import AuthOverlay from './components/AuthOverlay';
-import Sidebar from './components/Sidebar';
-import ChatInterface from './components/ChatInterface';
-import NewsTicker from './components/NewsTicker';
-import UserProfilePopover from './components/UserProfilePopover';
+import AppLayout from './components/AppLayout';
 import SettingsModal from './components/SettingsModal';
 import HelpModal from './components/HelpModal';
 import BugReportModal from './components/BugReportModal';
@@ -17,19 +14,17 @@ import { getAuthToken, authenticatedFetch } from './services/api';
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(!!getAuthToken());
   const [currentSessionId, setCurrentSessionId] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 768);
-  const [userProfile, setUserProfile] = useState({ 
-    displayName: localStorage.getItem('crickait_display_name') || '', 
-    email: '', 
-    plan: localStorage.getItem('crickait_plan') || 'free', 
+  const [userProfile, setUserProfile] = useState({
+    displayName: localStorage.getItem('crickait_display_name') || '',
+    email: '',
+    plan: localStorage.getItem('crickait_plan') || 'free',
     username: localStorage.getItem('crickait_username') || '',
     avatar: localStorage.getItem('crickait_avatar') || null
   });
-  const [popoverOpen, setPopoverOpen] = useState(false);
-  const [activeModal, setActiveModal] = useState(null); // null | 'profile' | 'upgrade' | 'personalization' | 'settings' | 'help' | 'bug-report' | 'admin'
+  const [activeModal, setActiveModal] = useState(null);
   const [selectedMatchId, setSelectedMatchId] = useState(null);
-  const [customAlert, setCustomAlert] = useState(null); // null | { title, message, isPrompt, defaultValue, onConfirm, onCancel }
-  const [errorOverlay, setErrorOverlay] = useState(null); // null | 'duck' | 'server'
+  const [customAlert, setCustomAlert] = useState(null);
+  const [errorOverlay, setErrorOverlay] = useState(null);
   const [authMode, setAuthMode] = useState('login');
 
   useEffect(() => {
@@ -37,24 +32,24 @@ function App() {
     const savedTheme = localStorage.getItem('crickait_theme') || 'dark';
     const root = document.documentElement;
     if (savedTheme === 'green') {
-        root.style.setProperty('--bg-color', '#0a1a12');
-        root.style.setProperty('--surface', '#132c1d');
-        root.style.setProperty('--surface-light', '#1e422c');
-        root.style.setProperty('--accent', '#00d26a');
+      root.style.setProperty('--bg-color', '#0a1a12');
+      root.style.setProperty('--surface', '#132c1d');
+      root.style.setProperty('--surface-light', '#1e422c');
+      root.style.setProperty('--accent', '#00d26a');
     } else if (savedTheme === 'light') {
-        root.style.setProperty('--bg-color', '#f5f7fa');
-        root.style.setProperty('--surface', '#ffffff');
-        root.style.setProperty('--surface-light', '#eef2f5');
-        root.style.setProperty('--text', '#2d3436');
-        root.style.setProperty('--text-muted', '#636e72');
-        root.style.setProperty('--accent', '#00b894');
+      root.style.setProperty('--bg-color', '#f5f7fa');
+      root.style.setProperty('--surface', '#ffffff');
+      root.style.setProperty('--surface-light', '#eef2f5');
+      root.style.setProperty('--text', '#2d3436');
+      root.style.setProperty('--text-muted', '#636e72');
+      root.style.setProperty('--accent', '#00b894');
     } else {
-        root.style.setProperty('--bg-color', '#0f1115');
-        root.style.setProperty('--surface', '#1a1d24');
-        root.style.setProperty('--surface-light', '#252932');
-        root.style.setProperty('--text', '#f1f1f1');
-        root.style.setProperty('--text-muted', '#a0aab2');
-        root.style.setProperty('--accent', '#10a37f');
+      root.style.setProperty('--bg-color', '#0f1115');
+      root.style.setProperty('--surface', '#1a1d24');
+      root.style.setProperty('--surface-light', '#252932');
+      root.style.setProperty('--text', '#f1f1f1');
+      root.style.setProperty('--text-muted', '#a0aab2');
+      root.style.setProperty('--accent', '#10a37f');
     }
 
     const handleAuthExpired = () => handleLogout();
@@ -77,17 +72,10 @@ function App() {
         setActiveModal(null);
         setSelectedMatchId(null);
         setCustomAlert(null);
-        setPopoverOpen(false);
       }
     };
     window.addEventListener('keydown', handleCloseAll);
     return () => window.removeEventListener('keydown', handleCloseAll);
-  }, []);
-
-  useEffect(() => {
-    const handleClick = () => setPopoverOpen(false);
-    window.addEventListener('click', handleClick);
-    return () => window.removeEventListener('click', handleClick);
   }, []);
 
   const fetchProfile = async () => {
@@ -162,11 +150,9 @@ function App() {
   };
 
   const handleSelectPrompt = (promptText) => {
-    // Put prompt in textarea and submit
     const inputField = document.getElementById('chat-input');
     if (inputField) {
       inputField.value = promptText;
-      // Trigger a react input event change
       const event = new Event('input', { bubbles: true });
       inputField.dispatchEvent(event);
       inputField.focus();
@@ -175,39 +161,33 @@ function App() {
 
   return (
     <>
-      {!isAuthenticated && <AuthOverlay initialMode={authMode} onLogin={() => { setIsAuthenticated(true); setAuthMode('login'); }} />}
+      {/* Unauthenticated: show landing page */}
+      {!isAuthenticated && (
+        <AuthOverlay
+          initialMode={authMode}
+          onLogin={() => {
+            setIsAuthenticated(true);
+            setAuthMode('login');
+          }}
+        />
+      )}
 
-      {isAuthenticated && <NewsTicker />}
-
-      <div className="app-container">
-        <Sidebar
-          isOpen={sidebarOpen}
-          setIsOpen={setSidebarOpen}
-          currentSessionId={currentSessionId}
-          setCurrentSessionId={setCurrentSessionId}
+      {/* Authenticated: show new navbar layout + chat */}
+      {isAuthenticated && (
+        <AppLayout
           userProfile={userProfile}
           onLogout={handleLogout}
-          onSignup={handleSignupAction}
-          onTogglePopover={() => setPopoverOpen(prev => !prev)}
-          onOpenModal={setActiveModal}
-          onSelectMatch={setSelectedMatchId}
-          onConfirmAlert={showConfirmAlert}
-          onShowAlert={showSimpleAlert}
-          popoverOpen={popoverOpen}
-          setPopoverOpen={setPopoverOpen}
-        />
-        <ChatInterface
+          showSimpleAlert={showSimpleAlert}
+          showConfirmAlert={showConfirmAlert}
           currentSessionId={currentSessionId}
           setCurrentSessionId={setCurrentSessionId}
-          toggleSidebar={() => setSidebarOpen(prev => !prev)}
-          onShowAlert={showSimpleAlert}
-          onShowError={(type) => setErrorOverlay(type)}
-          onLogout={handleLogout}
+          setActiveModal={setActiveModal}
+          setErrorOverlay={setErrorOverlay}
         />
-      </div>
+      )}
 
-      {/* Modals */}
-      {(activeModal === 'profile' || activeModal === 'upgrade' || activeModal === 'personalization' || activeModal === 'settings') && (
+      {/* Global Modals (rendered on top of authenticated layout) */}
+      {isAuthenticated && (activeModal === 'profile' || activeModal === 'upgrade' || activeModal === 'personalization' || activeModal === 'settings') && (
         <SettingsModal
           initialTab={
             activeModal === 'profile' ? 'profile' :
@@ -221,7 +201,7 @@ function App() {
         />
       )}
 
-      {activeModal === 'help' && (
+      {isAuthenticated && activeModal === 'help' && (
         <HelpModal
           onClose={() => setActiveModal(null)}
           onSelectPrompt={handleSelectPrompt}
@@ -229,20 +209,20 @@ function App() {
         />
       )}
 
-      {activeModal === 'bug-report' && (
+      {isAuthenticated && activeModal === 'bug-report' && (
         <BugReportModal
           onClose={() => setActiveModal(null)}
         />
       )}
 
-      {activeModal === 'admin' && (
+      {isAuthenticated && activeModal === 'admin' && (
         <AdminModal
           onClose={() => setActiveModal(null)}
           onShowAlert={showSimpleAlert}
         />
       )}
 
-      {selectedMatchId && (
+      {isAuthenticated && selectedMatchId && (
         <ScorecardOverlay
           matchId={selectedMatchId}
           onClose={() => setSelectedMatchId(null)}
