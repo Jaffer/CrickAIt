@@ -163,6 +163,12 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
             { theme: "outline", size: "large", width: 320, shape: "rectangular", text: "continue_with" }
           );
         }
+        // Fallback: Trigger Google One Tap (renders inline, immune to popup blockers)
+        window.google.accounts.id.prompt((notification) => {
+          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+            console.log("One Tap skipped:", notification.getNotDisplayedReason());
+          }
+        });
       } catch (err) {
         console.error("Google Sign-In initialization failed:", err);
       }
