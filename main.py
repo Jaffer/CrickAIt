@@ -716,6 +716,31 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error("Failed to initialize users table: %s", e)
 
+    # Create notifications tables
+    try:
+        async with aiosqlite.connect("checkpoints.db") as conn:
+            await conn.execute("""
+            CREATE TABLE IF NOT EXISTS notifications (
+                id          TEXT PRIMARY KEY,
+                username    TEXT,
+                title       TEXT NOT NULL,
+                message     TEXT NOT NULL,
+                type        TEXT DEFAULT 'info',
+                created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                expires_at  TIMESTAMP
+            )
+            """)
+            await conn.execute("""
+            CREATE TABLE IF NOT EXISTS notification_reads (
+                username    TEXT NOT NULL,
+                notif_id    TEXT NOT NULL,
+                PRIMARY KEY (username, notif_id)
+            )
+            """)
+            await conn.commit()
+    except Exception as e:
+        logger.error("Failed to initialize notifications tables: %s", e)
+
     async with AsyncSqliteSaver.from_conn_string("checkpoints.db") as checkpointer:
         await checkpointer.setup()
         agent = workflow.compile(checkpointer=checkpointer)
@@ -1848,6 +1873,7 @@ async def admin_get_users(username: str = Depends(get_current_user)):
         logger.error("Admin user fetch error: %s", e)
         raise HTTPException(status_code=500, detail="Failed to fetch users")
 
+
 @app.post("/admin/upgrade-user")
 async def admin_upgrade_user(req: UpgradeUserRequest, username: str = Depends(get_current_user)):
     if username != "iamthecreator":
@@ -1864,3 +1890,162 @@ async def admin_upgrade_user(req: UpgradeUserRequest, username: str = Depends(ge
     except Exception as e:
         logger.error("Admin user upgrade error: %s", e)
         raise HTTPException(status_code=500, detail="Failed to upgrade user")
+
+
+# ─────────────────────────────────────────────
+# NOTIFICATION MODELS
+# ─────────────────────────────────────────────
+
+class NotifyRequest(BaseModel):
+    title: str
+    message: str
+    type: str = "info"          # info | update | alert | promo
+    expires_days: Optional[int] = 7  # None = never expires
+
+class MarkReadRequest(BaseModel):
+    ids: list[str]
+
+
+# ─────────────────────────────────────────────
+# USER NOTIFICATION ENDPOINTS
+# ─────────────────────────────────────────────
+
+@app.get("/notifications")
+async def get_notifications(username: str = Depends(get_current_user)):
+    """Return all unread notifications for the current user (broadcast + personal)."""
+    try:
+        async with aiosqlite.connect("checkpoints.db") as conn:
+            conn.row_factory = aiosqlite.Row
+            async with conn.execute(
+                """
+                SELECT n.id, n.title, n.message, n.type, n.created_at
+                FROM notifications n
+                WHERE (n.username = ? OR n.username IS NULL)
+                  AND n.id NOT IN (
+                      SELECT notif_id FROM notification_reads WHERE username = ?
+                  )
+                  AND (n.expires_at IS NULL OR n.expires_at > CURRENT_TIMESTAMP)
+                ORDER BY n.created_at DESC
+                LIMIT 50
+                """,
+                (username, username)
+            ) as cursor:
+                rows = await cursor.fetchall()
+                return {"notifications": [dict(r) for r in rows]}
+    except Exception as e:
+        logger.error("Get notifications error: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to fetch notifications")
+
+
+@app.post("/notifications/mark-read")
+async def mark_notifications_read(req: MarkReadRequest, username: str = Depends(get_current_user)):
+    """Mark a list of notification IDs as read for the current user."""
+    if not req.ids:
+        return {"status": "ok"}
+    try:
+        async with aiosqlite.connect("checkpoints.db") as conn:
+            await conn.executemany(
+                "INSERT OR IGNORE INTO notification_reads (username, notif_id) VALUES (?, ?)",
+                [(username, nid) for nid in req.ids]
+            )
+            await conn.commit()
+        return {"status": "ok", "marked": len(req.ids)}
+    except Exception as e:
+        logger.error("Mark-read error: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to mark notifications read")
+
+
+# ─────────────────────────────────────────────
+# CREATOR-ONLY ADMIN NOTIFICATION ENDPOINTS
+# ─────────────────────────────────────────────
+
+def _require_creator(username: str):
+    if username != "iamthecreator":
+        raise HTTPException(status_code=403, detail="Forbidden: Creator access only.")
+
+
+@app.post("/admin/notify/broadcast")
+async def admin_broadcast_notification(req: NotifyRequest, username: str = Depends(get_current_user)):
+    """Send a notification to ALL users (username=NULL means broadcast)."""
+    _require_creator(username)
+    if req.type not in ("info", "update", "alert", "promo"):
+        raise HTTPException(status_code=400, detail="type must be one of: info, update, alert, promo")
+    try:
+        notif_id = str(uuid.uuid4())
+        expires_at = None
+        if req.expires_days:
+            expires_at = (datetime.utcnow() + timedelta(days=req.expires_days)).isoformat()
+        async with aiosqlite.connect("checkpoints.db") as conn:
+            await conn.execute(
+                "INSERT INTO notifications (id, username, title, message, type, expires_at) VALUES (?, NULL, ?, ?, ?, ?)",
+                (notif_id, req.title, req.message, req.type, expires_at)
+            )
+            await conn.commit()
+        logger.info("Broadcast notification sent: [%s] %s", req.type, req.title)
+        return {"status": "sent", "id": notif_id, "audience": "all_users"}
+    except Exception as e:
+        logger.error("Broadcast notification error: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to send notification")
+
+
+@app.post("/admin/notify/user/{target_username}")
+async def admin_notify_user(target_username: str, req: NotifyRequest, username: str = Depends(get_current_user)):
+    """Send a notification to a specific user only."""
+    _require_creator(username)
+    if req.type not in ("info", "update", "alert", "promo"):
+        raise HTTPException(status_code=400, detail="type must be one of: info, update, alert, promo")
+    try:
+        # Check user exists
+        async with aiosqlite.connect("checkpoints.db") as conn:
+            async with conn.execute("SELECT username FROM users WHERE username = ?", (target_username,)) as c:
+                if not await c.fetchone():
+                    raise HTTPException(status_code=404, detail=f"User '{target_username}' not found")
+            notif_id = str(uuid.uuid4())
+            expires_at = None
+            if req.expires_days:
+                expires_at = (datetime.utcnow() + timedelta(days=req.expires_days)).isoformat()
+            await conn.execute(
+                "INSERT INTO notifications (id, username, title, message, type, expires_at) VALUES (?, ?, ?, ?, ?, ?)",
+                (notif_id, target_username, req.title, req.message, req.type, expires_at)
+            )
+            await conn.commit()
+        logger.info("User notification sent to %s: [%s] %s", target_username, req.type, req.title)
+        return {"status": "sent", "id": notif_id, "audience": target_username}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("User notification error: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to send notification")
+
+
+@app.get("/admin/notify/list")
+async def admin_list_notifications(username: str = Depends(get_current_user)):
+    """List all notifications ever sent (creator view)."""
+    _require_creator(username)
+    try:
+        async with aiosqlite.connect("checkpoints.db") as conn:
+            conn.row_factory = aiosqlite.Row
+            async with conn.execute(
+                "SELECT id, username, title, message, type, created_at, expires_at FROM notifications ORDER BY created_at DESC"
+            ) as cursor:
+                rows = await cursor.fetchall()
+                return {"notifications": [dict(r) for r in rows]}
+    except Exception as e:
+        logger.error("Admin list notifications error: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to list notifications")
+
+
+@app.delete("/admin/notify/{notif_id}")
+async def admin_delete_notification(notif_id: str, username: str = Depends(get_current_user)):
+    """Delete a notification by ID (removes it for everyone)."""
+    _require_creator(username)
+    try:
+        async with aiosqlite.connect("checkpoints.db") as conn:
+            await conn.execute("DELETE FROM notification_reads WHERE notif_id = ?", (notif_id,))
+            await conn.execute("DELETE FROM notifications WHERE id = ?", (notif_id,))
+            await conn.commit()
+        return {"status": "deleted", "id": notif_id}
+    except Exception as e:
+        logger.error("Delete notification error: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to delete notification")
+

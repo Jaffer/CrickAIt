@@ -1,20 +1,35 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import ChatInterface from './ChatInterface';
 import NewsTicker from './NewsTicker';
+import { authenticatedFetch } from '../services/api';
 
 // Helper: fire a chat query by injecting into the chat input
 function sendChatQuery(query) {
   const input = document.getElementById('chat-input');
   if (!input) return;
-  // Set value via React's native input setter so state updates
   const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
   nativeInputValueSetter.call(input, query);
   input.dispatchEvent(new Event('input', { bubbles: true }));
-  // Small delay so React registers the state, then submit
   setTimeout(() => {
     const sendBtn = document.querySelector('.send-btn');
     if (sendBtn) sendBtn.click();
   }, 50);
+}
+
+// Icon per notification type
+const NOTIF_ICONS = {
+  info:   { icon: 'info',            color: 'text-sky-400',       bg: 'bg-sky-400/10'   },
+  update: { icon: 'new_releases',    color: 'text-grass-green',   bg: 'bg-grass-green/10' },
+  alert:  { icon: 'warning',         color: 'text-amber-400',     bg: 'bg-amber-400/10' },
+  promo:  { icon: 'workspace_premium', color: 'text-trophy-gold', bg: 'bg-trophy-gold/10' },
+};
+
+function timeAgo(isoString) {
+  const diff = (Date.now() - new Date(isoString + 'Z').getTime()) / 1000;
+  if (diff < 60)    return 'just now';
+  if (diff < 3600)  return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
 }
 
 export default function AppLayout({
@@ -28,31 +43,64 @@ export default function AppLayout({
   setErrorOverlay,
 }) {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
-  const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
-  const [searchValue, setSearchValue] = useState('');
-  const [activeNav, setActiveNav] = useState('assistant');
+  const [notifDropdownOpen, setNotifDropdownOpen]     = useState(false);
+  const [searchValue, setSearchValue]                 = useState('');
+  const [activeNav, setActiveNav]                     = useState('assistant');
+  const [notifications, setNotifications]             = useState([]);
+  const [unreadCount, setUnreadCount]                 = useState(0);
 
   const profileDropdownRef = useRef(null);
-  const notifDropdownRef = useRef(null);
+  const notifDropdownRef   = useRef(null);
 
+  // ── Fetch notifications from backend ──────────────────────────────
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const res = await authenticatedFetch('/notifications');
+      if (res.ok) {
+        const data = await res.json();
+        setNotifications(data.notifications || []);
+        setUnreadCount((data.notifications || []).length);
+      }
+    } catch (_) { /* silent — don't interrupt UX */ }
+  }, []);
+
+  // Poll every 60 seconds + on mount
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 60_000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
+
+  // ── Mark all visible as read when dropdown opens ──────────────────
+  const markAllRead = useCallback(async (notifs) => {
+    if (!notifs.length) return;
+    const ids = notifs.map((n) => n.id);
+    try {
+      await authenticatedFetch('/notifications/mark-read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      });
+      setUnreadCount(0);
+    } catch (_) { /* silent */ }
+  }, []);
+
+  const openNotifDropdown = () => {
+    setNotifDropdownOpen(true);
+    markAllRead(notifications);
+  };
+
+  // ── Close dropdowns on outside click ─────────────────────────────
   useEffect(() => {
     const handleOutsideClick = (e) => {
-      if (profileDropdownRef.current && !profileDropdownRef.current.contains(e.target)) {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(e.target))
         setProfileDropdownOpen(false);
-      }
-      if (notifDropdownRef.current && !notifDropdownRef.current.contains(e.target)) {
+      if (notifDropdownRef.current && !notifDropdownRef.current.contains(e.target))
         setNotifDropdownOpen(false);
-      }
     };
     document.addEventListener('mousedown', handleOutsideClick);
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
-
-  const handleNavClick = (e, nav, query) => {
-    e.preventDefault();
-    setActiveNav(nav);
-    sendChatQuery(query);
-  };
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -67,10 +115,10 @@ export default function AppLayout({
     : (userProfile.username ? userProfile.username.substring(0, 2).toUpperCase() : '?');
 
   const planBadge = userProfile.plan === 'pro'
-    ? { label: 'Pro', color: 'text-trophy-gold border-trophy-gold/30 bg-trophy-gold/10' }
+    ? { label: 'Pro',   color: 'text-trophy-gold border-trophy-gold/30 bg-trophy-gold/10' }
     : userProfile.plan === 'guest'
     ? { label: 'Guest', color: 'text-on-surface-variant border-outline-variant/30 bg-surface-container' }
-    : { label: 'Free', color: 'text-grass-green border-grass-green/30 bg-grass-green/10' };
+    : { label: 'Free',  color: 'text-grass-green border-grass-green/30 bg-grass-green/10' };
 
   const navLinks = [
     { id: 'assistant', label: 'AI Assistant', query: null },
@@ -136,25 +184,60 @@ export default function AppLayout({
               />
             </form>
 
-            {/* Notifications */}
+            {/* Notifications Bell */}
             <div className="relative" ref={notifDropdownRef}>
               <button
-                className={`material-symbols-outlined transition-colors ${notifDropdownOpen ? 'text-grass-green' : 'text-on-surface-variant hover:text-grass-green'}`}
-                onClick={() => setNotifDropdownOpen((prev) => !prev)}
+                className={`relative material-symbols-outlined transition-colors ${notifDropdownOpen ? 'text-grass-green' : 'text-on-surface-variant hover:text-grass-green'}`}
+                onClick={() => notifDropdownOpen ? setNotifDropdownOpen(false) : openNotifDropdown()}
                 title="Notifications"
               >
                 notifications
+                {/* Unread badge */}
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-[3px] bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
               </button>
+
               {notifDropdownOpen && (
-                <div className="absolute right-0 top-full mt-xs w-72 bg-surface-container border border-outline-variant/30 rounded-xl shadow-2xl z-50 overflow-hidden">
+                <div className="absolute right-0 top-full mt-xs w-80 bg-surface-container border border-outline-variant/30 rounded-xl shadow-2xl z-50 overflow-hidden">
                   <div className="px-md py-sm border-b border-outline-variant/30 flex items-center justify-between">
                     <span className="text-sm font-bold text-on-surface">Notifications</span>
-                    <span className="text-[10px] text-on-surface-variant font-label-caps uppercase">0 new</span>
+                    <button
+                      className="text-[10px] text-grass-green hover:underline font-label-caps uppercase"
+                      onClick={() => fetchNotifications()}
+                    >
+                      Refresh
+                    </button>
                   </div>
-                  <div className="px-md py-lg flex flex-col items-center justify-center gap-xs text-center">
-                    <span className="material-symbols-outlined text-on-surface-variant text-3xl">notifications_off</span>
-                    <p className="text-xs text-on-surface-variant">No notifications yet</p>
-                  </div>
+
+                  {notifications.length === 0 ? (
+                    <div className="px-md py-lg flex flex-col items-center justify-center gap-xs text-center">
+                      <span className="material-symbols-outlined text-on-surface-variant text-3xl">notifications_off</span>
+                      <p className="text-xs text-on-surface-variant">No notifications yet</p>
+                    </div>
+                  ) : (
+                    <ul className="max-h-80 overflow-y-auto divide-y divide-outline-variant/10">
+                      {notifications.map((n) => {
+                        const style = NOTIF_ICONS[n.type] || NOTIF_ICONS.info;
+                        return (
+                          <li key={n.id} className="flex items-start gap-sm px-md py-sm hover:bg-surface-container-high transition-colors">
+                            <div className={`mt-0.5 w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center ${style.bg}`}>
+                              <span className={`material-symbols-outlined text-[16px] ${style.color}`} style={{ fontVariationSettings: "'FILL' 1" }}>
+                                {style.icon}
+                              </span>
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-semibold text-on-surface leading-snug">{n.title}</p>
+                              <p className="text-[11px] text-on-surface-variant leading-snug mt-0.5">{n.message}</p>
+                              <p className="text-[10px] text-on-surface-variant/60 mt-1">{timeAgo(n.created_at)}</p>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
                 </div>
               )}
             </div>
@@ -172,10 +255,7 @@ export default function AppLayout({
             <div className="relative" ref={profileDropdownRef}>
               <button
                 className="flex items-center gap-xs bg-surface-container border border-outline-variant/30 rounded-full px-sm py-1 hover:border-grass-green/50 transition-all"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setProfileDropdownOpen((prev) => !prev);
-                }}
+                onClick={(e) => { e.stopPropagation(); setProfileDropdownOpen((prev) => !prev); }}
               >
                 {userProfile.avatar ? (
                   <img src={userProfile.avatar} alt="Avatar" className="w-7 h-7 rounded-full object-cover" />
@@ -193,7 +273,6 @@ export default function AppLayout({
                 <span className="material-symbols-outlined text-on-surface-variant text-sm">expand_more</span>
               </button>
 
-              {/* Dropdown Menu */}
               {profileDropdownOpen && (
                 <div
                   className="absolute right-0 top-full mt-xs w-56 bg-surface-container border border-outline-variant/30 rounded-xl shadow-2xl z-50 overflow-hidden"
@@ -208,35 +287,28 @@ export default function AppLayout({
                     className="w-full flex items-center gap-sm px-md py-sm text-sm text-on-surface hover:bg-surface-container-high transition-colors"
                     onClick={() => { setActiveModal('profile'); setProfileDropdownOpen(false); }}
                   >
-                    <span className="material-symbols-outlined text-[18px]">person</span>
-                    Profile
+                    <span className="material-symbols-outlined text-[18px]">person</span> Profile
                   </button>
-
                   <button
                     className="w-full flex items-center gap-sm px-md py-sm text-sm text-on-surface hover:bg-surface-container-high transition-colors"
                     onClick={() => { setActiveModal('settings'); setProfileDropdownOpen(false); }}
                   >
-                    <span className="material-symbols-outlined text-[18px]">settings</span>
-                    Settings
+                    <span className="material-symbols-outlined text-[18px]">settings</span> Settings
                   </button>
-
                   {userProfile.plan !== 'pro' && (
                     <button
                       className="w-full flex items-center gap-sm px-md py-sm text-sm text-trophy-gold hover:bg-trophy-gold/10 transition-colors"
                       onClick={() => { setActiveModal('upgrade'); setProfileDropdownOpen(false); }}
                     >
-                      <span className="material-symbols-outlined text-[18px]">workspace_premium</span>
-                      Upgrade to Pro
+                      <span className="material-symbols-outlined text-[18px]">workspace_premium</span> Upgrade to Pro
                     </button>
                   )}
-
                   <div className="border-t border-outline-variant/30">
                     <button
                       className="w-full flex items-center gap-sm px-md py-sm text-sm text-red-400 hover:bg-red-500/10 transition-colors"
                       onClick={() => { setProfileDropdownOpen(false); onLogout(); }}
                     >
-                      <span className="material-symbols-outlined text-[18px]">logout</span>
-                      Sign Out
+                      <span className="material-symbols-outlined text-[18px]">logout</span> Sign Out
                     </button>
                   </div>
                 </div>
@@ -246,7 +318,7 @@ export default function AppLayout({
         </nav>
       </header>
 
-      {/* Main Content Area */}
+      {/* Main Content */}
       <main className="flex-1 min-h-0 overflow-hidden">
         <ChatInterface
           currentSessionId={currentSessionId}
@@ -260,31 +332,28 @@ export default function AppLayout({
 
       {/* Mobile Bottom Navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 w-full z-50 bg-surface-container border-t border-stadium-grey flex justify-around items-center px-xs py-base shadow-lg">
-        <div
-          className="flex flex-col items-center justify-center bg-primary-container/20 text-grass-green rounded-xl px-4 py-1 cursor-pointer"
-          onClick={() => { setActiveNav('assistant'); }}
-        >
+        <div className="flex flex-col items-center justify-center bg-primary-container/20 text-grass-green rounded-xl px-4 py-1 cursor-pointer"
+          onClick={() => setActiveNav('assistant')}>
           <span className="material-symbols-outlined">smart_toy</span>
           <span className="font-label-caps text-[10px]">AI Chat</span>
         </div>
-        <div
-          className="flex flex-col items-center justify-center text-on-surface-variant cursor-pointer"
-          onClick={() => { setActiveNav('live'); sendChatQuery('Show me all live cricket match scores right now'); }}
-        >
-          <span className="material-symbols-outlined">sensors</span>
-          <span className="font-label-caps text-[10px]">Live</span>
+        <div className="flex flex-col items-center justify-center text-on-surface-variant cursor-pointer relative"
+          onClick={() => notifDropdownOpen ? setNotifDropdownOpen(false) : openNotifDropdown()}>
+          <span className="material-symbols-outlined">notifications</span>
+          {unreadCount > 0 && (
+            <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
+          <span className="font-label-caps text-[10px]">Alerts</span>
         </div>
-        <div
-          className="flex flex-col items-center justify-center text-on-surface-variant cursor-pointer"
-          onClick={() => setActiveModal('settings')}
-        >
+        <div className="flex flex-col items-center justify-center text-on-surface-variant cursor-pointer"
+          onClick={() => setActiveModal('settings')}>
           <span className="material-symbols-outlined">settings</span>
           <span className="font-label-caps text-[10px]">Settings</span>
         </div>
-        <div
-          className="flex flex-col items-center justify-center text-on-surface-variant cursor-pointer"
-          onClick={() => setProfileDropdownOpen(true)}
-        >
+        <div className="flex flex-col items-center justify-center text-on-surface-variant cursor-pointer"
+          onClick={() => setProfileDropdownOpen(true)}>
           <span className="material-symbols-outlined">person</span>
           <span className="font-label-caps text-[10px]">Profile</span>
         </div>
