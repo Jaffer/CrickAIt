@@ -1,19 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import ChatInterface from './ChatInterface';
 import NewsTicker from './NewsTicker';
+import LiveMatches from './LiveMatches';
 import { authenticatedFetch } from '../services/api';
 
-// Helper: fire a chat query by injecting into the chat input
+// Helper: fire a chat query using custom event listener in ChatInterface
 function sendChatQuery(query) {
-  const input = document.getElementById('chat-input');
-  if (!input) return;
-  const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
-  nativeInputValueSetter.call(input, query);
-  input.dispatchEvent(new Event('input', { bubbles: true }));
-  setTimeout(() => {
-    const sendBtn = document.querySelector('.send-btn');
-    if (sendBtn) sendBtn.click();
-  }, 50);
+  window.dispatchEvent(new CustomEvent('send-chat-message', { detail: query }));
 }
 
 // Icon per notification type
@@ -41,9 +34,11 @@ export default function AppLayout({
   setCurrentSessionId,
   setActiveModal,
   setErrorOverlay,
+  setSelectedMatchId,
 }) {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notifDropdownOpen, setNotifDropdownOpen]     = useState(false);
+  const [liveScoresOpen, setLiveScoresOpen]           = useState(false);
   const [searchValue, setSearchValue]                 = useState('');
   const [activeNav, setActiveNav]                     = useState('assistant');
   const [notifications, setNotifications]             = useState([]);
@@ -51,6 +46,8 @@ export default function AppLayout({
 
   const profileDropdownRef = useRef(null);
   const notifDropdownRef   = useRef(null);
+  const liveScoresRef      = useRef(null);
+  const mobileLiveScoresRef = useRef(null);
 
   // ── Fetch notifications from backend ──────────────────────────────
   const fetchNotifications = useCallback(async () => {
@@ -97,6 +94,10 @@ export default function AppLayout({
         setProfileDropdownOpen(false);
       if (notifDropdownRef.current && !notifDropdownRef.current.contains(e.target))
         setNotifDropdownOpen(false);
+      if (liveScoresRef.current && !liveScoresRef.current.contains(e.target))
+        setLiveScoresOpen(false);
+      if (mobileLiveScoresRef.current && mobileLiveScoresRef.current === e.target)
+        setLiveScoresOpen(false);
     };
     document.addEventListener('mousedown', handleOutsideClick);
     return () => document.removeEventListener('mousedown', handleOutsideClick);
@@ -120,13 +121,6 @@ export default function AppLayout({
     ? { label: 'Guest', color: 'text-on-surface-variant border-outline-variant/30 bg-surface-container' }
     : { label: 'Free',  color: 'text-grass-green border-grass-green/30 bg-grass-green/10' };
 
-  const navLinks = [
-    { id: 'assistant', label: 'AI Assistant', query: null },
-    { id: 'live',      label: 'Live Scores',  query: 'Show me all live cricket match scores right now' },
-    { id: 'fixtures',  label: 'Fixtures',     query: 'Show me upcoming cricket fixtures and schedules' },
-    { id: 'news',      label: 'News',         query: 'What is the latest cricket news today?' },
-  ];
-
   return (
     <div
       className="bg-background text-on-background font-body-md flex flex-col"
@@ -147,24 +141,79 @@ export default function AppLayout({
 
           {/* Desktop Nav Links */}
           <div className="hidden md:flex items-center gap-md">
-            {navLinks.map(({ id, label, query }) => (
+            <a
+              href="#"
+              className={`transition-colors duration-200 font-body-md text-body-md cursor-pointer ${
+                activeNav === 'assistant'
+                  ? 'text-grass-green font-bold border-b-2 border-grass-green pb-1'
+                  : 'text-on-surface-variant hover:text-on-surface'
+              }`}
+              onClick={(e) => {
+                e.preventDefault();
+                setActiveNav('assistant');
+              }}
+            >
+              AI Assistant
+            </a>
+
+            {/* Live Scores Link with dropdown */}
+            <div className="relative" ref={liveScoresRef}>
               <a
-                key={id}
                 href="#"
-                className={`transition-colors duration-200 font-body-md text-body-md cursor-pointer ${
-                  activeNav === id
+                className={`transition-colors duration-200 font-body-md text-body-md cursor-pointer flex items-center gap-xs ${
+                  liveScoresOpen || activeNav === 'live'
                     ? 'text-grass-green font-bold border-b-2 border-grass-green pb-1'
                     : 'text-on-surface-variant hover:text-on-surface'
                 }`}
                 onClick={(e) => {
                   e.preventDefault();
-                  setActiveNav(id);
-                  if (query) sendChatQuery(query);
+                  setLiveScoresOpen((prev) => !prev);
+                  setActiveNav('live');
                 }}
               >
-                {label}
+                Live Scores <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>
               </a>
-            ))}
+              {liveScoresOpen && (
+                <div className="absolute left-0 top-full mt-xs w-80 bg-surface-container border border-outline-variant/30 rounded-xl shadow-2xl z-50 overflow-hidden max-h-[400px] overflow-y-auto p-sm">
+                  <LiveMatches onSelectMatch={(matchId) => {
+                    setSelectedMatchId(matchId);
+                    setLiveScoresOpen(false);
+                  }} />
+                </div>
+              )}
+            </div>
+
+            <a
+              href="#"
+              className={`transition-colors duration-200 font-body-md text-body-md cursor-pointer ${
+                activeNav === 'schedule'
+                  ? 'text-grass-green font-bold border-b-2 border-grass-green pb-1'
+                  : 'text-on-surface-variant hover:text-on-surface'
+              }`}
+              onClick={(e) => {
+                e.preventDefault();
+                setActiveNav('schedule');
+                sendChatQuery('Show me upcoming cricket matches and schedule');
+              }}
+            >
+              Schedule
+            </a>
+
+            <a
+              href="#"
+              className={`transition-colors duration-200 font-body-md text-body-md cursor-pointer ${
+                activeNav === 'news'
+                  ? 'text-grass-green font-bold border-b-2 border-grass-green pb-1'
+                  : 'text-on-surface-variant hover:text-on-surface'
+              }`}
+              onClick={(e) => {
+                e.preventDefault();
+                setActiveNav('news');
+                sendChatQuery('What is the latest cricket news today?');
+              }}
+            >
+              News
+            </a>
           </div>
 
           {/* Right Controls */}
@@ -318,8 +367,8 @@ export default function AppLayout({
         </nav>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 min-h-0 overflow-hidden">
+      {/* Main Content — stretches ChatInterface using flex flex-col */}
+      <main className="flex-1 min-h-0 overflow-hidden flex flex-col">
         <ChatInterface
           currentSessionId={currentSessionId}
           setCurrentSessionId={setCurrentSessionId}
@@ -330,6 +379,24 @@ export default function AppLayout({
         />
       </main>
 
+      {/* Mobile Live Matches Drawer/Overlay */}
+      {liveScoresOpen && (
+        <div ref={mobileLiveScoresRef} className="md:hidden fixed inset-0 z-50 flex items-center justify-center p-md bg-pitch-dark/80 backdrop-blur-sm">
+          <div className="relative w-full max-w-sm bg-surface-container border border-outline-variant/30 rounded-2xl shadow-2xl p-md overflow-hidden">
+            <div className="flex justify-between items-center mb-sm border-b border-outline-variant/20 pb-xs">
+              <span className="font-bold text-sm text-on-surface">🔴 Live Matches</span>
+              <button className="text-on-surface-variant hover:text-on-surface text-lg font-bold" onClick={() => setLiveScoresOpen(false)}>&times;</button>
+            </div>
+            <div className="max-h-[350px] overflow-y-auto">
+              <LiveMatches onSelectMatch={(matchId) => {
+                setSelectedMatchId(matchId);
+                setLiveScoresOpen(false);
+              }} />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Mobile Bottom Navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 w-full z-50 bg-surface-container border-t border-stadium-grey flex justify-around items-center px-xs py-base shadow-lg">
         <div className="flex flex-col items-center justify-center bg-primary-container/20 text-grass-green rounded-xl px-4 py-1 cursor-pointer"
@@ -338,14 +405,9 @@ export default function AppLayout({
           <span className="font-label-caps text-[10px]">AI Chat</span>
         </div>
         <div className="flex flex-col items-center justify-center text-on-surface-variant cursor-pointer relative"
-          onClick={() => notifDropdownOpen ? setNotifDropdownOpen(false) : openNotifDropdown()}>
-          <span className="material-symbols-outlined">notifications</span>
-          {unreadCount > 0 && (
-            <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center">
-              {unreadCount > 9 ? '9+' : unreadCount}
-            </span>
-          )}
-          <span className="font-label-caps text-[10px]">Alerts</span>
+          onClick={() => setLiveScoresOpen((prev) => !prev)}>
+          <span className="material-symbols-outlined">sensors</span>
+          <span className="font-label-caps text-[10px]">Live</span>
         </div>
         <div className="flex flex-col items-center justify-center text-on-surface-variant cursor-pointer"
           onClick={() => setActiveModal('settings')}>

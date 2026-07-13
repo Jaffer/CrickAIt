@@ -11,6 +11,13 @@ export default function AdminModal({ onClose, onShowAlert }) {
   const [notifyStatus, setNotifyStatus] = useState({ type: '', text: '' });
   const [isSendingNotification, setIsSendingNotification] = useState(false);
 
+  // Broadcast state
+  const [broadcastTitle, setBroadcastTitle] = useState('');
+  const [broadcastMessage, setBroadcastMessage] = useState('');
+  const [broadcastType, setBroadcastType] = useState('info');
+  const [broadcastStatus, setBroadcastStatus] = useState({ type: '', text: '' });
+  const [isSendingBroadcast, setIsSendingBroadcast] = useState(false);
+
   useEffect(() => {
     if (activeTab === 'users') {
       fetchUsers();
@@ -84,6 +91,43 @@ export default function AdminModal({ onClose, onShowAlert }) {
     }
   };
 
+  const handleSendBroadcast = async (e) => {
+    e.preventDefault();
+    if (!broadcastTitle.trim() || !broadcastMessage.trim()) return;
+
+    setIsSendingBroadcast(true);
+    setBroadcastStatus({ type: '', text: '' });
+
+    try {
+      const res = await authenticatedFetch('/admin/notify/broadcast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: broadcastTitle.trim(),
+          message: broadcastMessage.trim(),
+          type: broadcastType,
+          expires_days: 7 // default TTL
+        })
+      });
+
+      if (res.ok) {
+        setBroadcastStatus({ type: 'success', text: 'Broadcast notification sent to all users!' });
+        setBroadcastTitle('');
+        setBroadcastMessage('');
+        setBroadcastType('info');
+      } else {
+        const errData = await res.json();
+        setBroadcastStatus({ type: 'error', text: errData.detail || 'Failed to send broadcast.' });
+      }
+    } catch (err) {
+      console.error("Broadcast send failed:", err);
+      setBroadcastStatus({ type: 'error', text: 'Network error sending broadcast.' });
+    } finally {
+      setIsSendingBroadcast(false);
+      setTimeout(() => setBroadcastStatus({ type: '', text: '' }), 5000);
+    }
+  };
+
   return (
     <div className="modal" style={{ display: 'flex' }}>
       <div className="modal-content" style={{ maxWidth: '800px', width: '90%' }}>
@@ -106,6 +150,13 @@ export default function AdminModal({ onClose, onShowAlert }) {
               style={{ background: activeTab === 'notify' ? 'var(--accent)' : 'transparent', color: '#fff' }}
             >
               <i className="fa-solid fa-envelope-circle-check"></i> Send Bug Fixed Email
+            </button>
+            <button
+              className={`settings-btn ${activeTab === 'broadcast' ? 'active' : ''}`}
+              onClick={() => setActiveTab('broadcast')}
+              style={{ background: activeTab === 'broadcast' ? 'var(--accent)' : 'transparent', color: '#fff' }}
+            >
+              <i className="fa-solid fa-bullhorn"></i> Send Announcement
             </button>
           </div>
 
@@ -212,6 +263,73 @@ export default function AdminModal({ onClose, onShowAlert }) {
                   ) : (
                     <>
                       <i className="fa-solid fa-paper-plane"></i> Send Fixed Notification
+                    </>
+                  )}
+                </button>
+              </form>
+            </div>
+          )}
+
+          {activeTab === 'broadcast' && (
+            <div className="admin-tab-content" style={{ maxWidth: '500px' }}>
+              <form onSubmit={handleSendBroadcast}>
+                <div className="input-group">
+                  <label htmlFor="broadcast-title">Announcement Title</label>
+                  <input
+                    type="text"
+                    id="broadcast-title"
+                    className="modern-input"
+                    placeholder="e.g. 🏏 Live Win Probability is Live!"
+                    value={broadcastTitle}
+                    onChange={(e) => setBroadcastTitle(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="input-group" style={{ marginTop: '12px' }}>
+                  <label htmlFor="broadcast-message">Announcement Message</label>
+                  <textarea
+                    id="broadcast-message"
+                    className="modern-input"
+                    style={{ minHeight: '100px', resize: 'vertical' }}
+                    placeholder="e.g. Check out the latest win probability projections..."
+                    value={broadcastMessage}
+                    onChange={(e) => setBroadcastMessage(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="input-group" style={{ marginTop: '12px' }}>
+                  <label htmlFor="broadcast-type">Announcement Type</label>
+                  <select
+                    id="broadcast-type"
+                    className="modern-input"
+                    value={broadcastType}
+                    onChange={(e) => setBroadcastType(e.target.value)}
+                  >
+                    <option value="info">General Info</option>
+                    <option value="update">New Feature / Update</option>
+                    <option value="alert">System Alert</option>
+                    <option value="promo">Promotion</option>
+                  </select>
+                </div>
+
+                {broadcastStatus.text && (
+                  <div style={{ marginTop: '10px', fontSize: '0.88rem', minHeight: '20px' }}>
+                    {broadcastStatus.type === 'success' ? (
+                      <span style={{ color: '#2ecc71' }}><i className="fa-solid fa-circle-check"></i> {broadcastStatus.text}</span>
+                    ) : (
+                      <span style={{ color: '#ff4b4b' }}><i className="fa-solid fa-triangle-exclamation"></i> {broadcastStatus.text}</span>
+                    )}
+                  </div>
+                )}
+
+                <button type="submit" className="auth-submit-btn" style={{ marginTop: '14px' }} disabled={isSendingBroadcast}>
+                  {isSendingBroadcast ? (
+                    <>
+                      <i className="fa-solid fa-spinner fa-spin"></i> Sending Announcement...
+                    </>
+                  ) : (
+                    <>
+                      <i className="fa-solid fa-bullhorn"></i> Send Message to All Users
                     </>
                   )}
                 </button>

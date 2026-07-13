@@ -183,6 +183,7 @@ function App() {
           setCurrentSessionId={setCurrentSessionId}
           setActiveModal={setActiveModal}
           setErrorOverlay={setErrorOverlay}
+          setSelectedMatchId={setSelectedMatchId}
         />
       )}
 

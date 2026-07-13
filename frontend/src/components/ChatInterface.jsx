@@ -31,6 +31,16 @@ export default function ChatInterface({
   }, [messages, loading]);
 
   useEffect(() => {
+    const handleSendMsg = (e) => {
+      if (e.detail) {
+        handleSend(e.detail);
+      }
+    };
+    window.addEventListener('send-chat-message', handleSendMsg);
+    return () => window.removeEventListener('send-chat-message', handleSendMsg);
+  }, [handleSend]);
+
+  useEffect(() => {
     const handleTitleChange = (e) => {
       setChatTitle(e.detail);
     };
