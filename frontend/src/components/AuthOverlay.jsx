@@ -146,7 +146,7 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
 
       try {
         window.google.accounts.id.initialize({
-          client_id: "895472652408-5vah6nfpd1nef0p5tk86cvmqj29g5mvu.apps.googleusercontent.com",
+          client_id: "853635780939-d5lqh389n4u7ltrjfngpki4o92nj8v26.apps.googleusercontent.com",
           callback: (response) => callbackRef.current(response),
           auto_select: false,
           cancel_on_tap_outside: true,
