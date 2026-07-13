@@ -120,6 +120,10 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
         if (profile.rival_teams) {
           setRivalTeams(profile.rival_teams.join(', '));
         }
+        if (profile.verbosity_level) {
+          const revVerbosityMap = { 'Concise': '1', 'Standard': '2', 'Detailed': '3' };
+          setVerbosity(revVerbosityMap[profile.verbosity_level] || '2');
+        }
       }
     } catch (e) {
       console.error(e);
@@ -214,6 +218,9 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
     localStorage.setItem('crickait_lang', language);
     applyTheme(theme);
 
+    const verbosityMap = { '1': 'Concise', '2': 'Standard', '3': 'Detailed' };
+    const verbosityLabel = verbosityMap[verbosity] || 'Standard';
+
     try {
       const res = await authenticatedFetch('/profile', {
         method: 'POST',
@@ -221,7 +228,8 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
         body: JSON.stringify({
           expertise_level: expertise,
           preferred_format: formatsList,
-          rival_teams: rivals
+          rival_teams: rivals,
+          verbosity_level: verbosityLabel
         })
       });
 
@@ -650,9 +658,9 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
                     <button 
                       onClick={() => setPushNotifications(!pushNotifications)}
                       type="button"
-                      className={`w-12 h-6 rounded-full relative transition-colors duration-300 ${pushNotifications ? 'bg-grass-green' : 'bg-outline-variant/50'}`}
+                      className={`w-11 h-6 rounded-full relative transition-colors duration-300 border ${pushNotifications ? 'bg-grass-green border-grass-green' : 'bg-surface-container-high border-outline-variant/60'}`}
                     >
-                      <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all duration-300 ${pushNotifications ? 'right-1' : 'left-1'}`}></span>
+                      <span className={`absolute top-[3px] left-[3px] w-3.5 h-3.5 bg-white rounded-full transition-transform duration-300 ${pushNotifications ? 'translate-x-5' : 'translate-x-0'}`}></span>
                     </button>
                   </div>
 

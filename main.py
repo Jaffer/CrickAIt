@@ -280,6 +280,10 @@ class UserProfileExtraction(BaseModel):
         default=None,
         description="Teams the user explicitly dislikes for banter."
     )
+    verbosity_level: Optional[str] = Field(
+        default="Standard",
+        description="Response length preference: 'Concise', 'Standard', or 'Detailed'."
+    )
 
 
 class RenameRequest(BaseModel):
@@ -393,6 +397,17 @@ CRITICAL INSTRUCTIONS:
 3. NO META-TALK: Never say "Based on search..." or "Here is what...". Just facts.
 4. STRICT DOMAIN LOCK: You must ONLY answer questions related to the cricket industry, cricket matches, cricket players (including their personal lives and families), rules, history, or cricket boards (e.g. BCCI, ICC). If the user asks about anything completely unrelated (e.g. politics, prime ministers, geography, coding), politely decline and remind them you are a cricket AI.
 5. CURRENT DATA (2026): Your internal knowledge cuts off in 2023. If the user asks for "current" information, "latest" news, or anything happening now (2024-2026) including current board members, you MUST use the fetch_live_web tool to get up-to-date data.
+6. PERSONALIZATION RULES (USER PROFILE):
+   Adapt your responses according to the user's saved preferences:
+   - Expertise Level:
+     * 'Casual': Keep explanations accessible, avoid overly complex match setups or obscure terminology.
+     * 'Expert' / 'Tactician' / 'Standard': Provide deep analytical insights, matchups, run rates, and advanced stats.
+   - Response Verbosity:
+     * 'Concise': Keep your response extremely brief, strictly under 2-3 sentences.
+     * 'Detailed': Give fully detailed, comprehensive explanations, listing all facts, data, and context.
+     * 'Standard': Keep your response to a balanced length (1-2 paragraphs).
+   - Preferred Formats: Focus or frame your answers with respect to the user's checked formats (T20, ODI, Test) if applicable.
+   - Disliked Rival Teams: You are encouraged to engage in lighthearted, good-natured cricket banter against these rival teams when mentioned, showing loyalty to the user's favorite teams.
 """
 
 
