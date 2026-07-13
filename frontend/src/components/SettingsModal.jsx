@@ -1,19 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
 import { authenticatedFetch } from '../services/api';
 
-export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, onLogout, initialTab = 'profile' }) {
+export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, onLogout, initialTab = 'profile', isInline = false }) {
   const [activeTab, setActiveTab] = useState(initialTab);
   
   // Profile state
-  const [displayName, setDisplayName] = useState(localStorage.getItem('crickait_display_name') || 'Guest User');
-  const [email, setEmail] = useState('guest@crickait.com');
+  const [fullName, setFullName] = useState(localStorage.getItem('crickait_full_name') || 'Alex Richardson');
+  const [displayName, setDisplayName] = useState(localStorage.getItem('crickait_display_name') || 'Alex_Stats_24');
+  const [email, setEmail] = useState('alex@crickait.com');
   const [provider, setProvider] = useState('local');
   const [plan, setPlan] = useState('free');
-  const [avatar, setAvatar] = useState(localStorage.getItem('crickait_avatar') || null);
-  const [bio, setBio] = useState(localStorage.getItem('crickait_bio') || 'Passionate cricket fan with a deep interest in data analytics.');
+  const [avatar, setAvatar] = useState(localStorage.getItem('crickait_avatar') || '/avatars/avatar_1.png');
+  const [bio, setBio] = useState(localStorage.getItem('crickait_bio') || 'Passionate cricket fan with a deep interest in data analytics and T20 strategy. Here for the precision stats and AI insights.');
   
   // Profile editing
   const [isEditingAvatar, setIsEditingAvatar] = useState(false);
+  const [newFullName, setNewFullName] = useState(fullName);
   const [newDisplayName, setNewDisplayName] = useState(displayName);
   const [newAvatar, setNewAvatar] = useState(avatar);
   const [newBio, setNewBio] = useState(bio);
@@ -45,11 +47,15 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
         const data = await res.json();
         setDisplayName(data.display_name || data.username);
         setNewDisplayName(data.display_name || data.username);
+        const nameParts = (data.display_name || data.username).split('_');
+        const defaultFullName = nameParts.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+        setFullName(data.full_name || defaultFullName);
+        setNewFullName(data.full_name || defaultFullName);
         setEmail(data.email);
         setPlan(data.plan || 'free');
         setProvider(data.email === 'guest@crickait.com' ? 'local' : (data.email.includes('gmail.com') ? 'Google' : 'local'));
-        setAvatar(data.avatar || null);
-        setNewAvatar(data.avatar || null);
+        setAvatar(data.avatar || '/avatars/avatar_1.png');
+        setNewAvatar(data.avatar || '/avatars/avatar_1.png');
       }
     } catch (e) {
       console.error('Failed to fetch profile info', e);
@@ -112,6 +118,7 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
         body: JSON.stringify({ display_name: name, avatar: newAvatar })
       });
       localStorage.setItem('crickait_display_name', name);
+      localStorage.setItem('crickait_full_name', newFullName);
       if (newAvatar) {
         localStorage.setItem('crickait_avatar', newAvatar);
       } else {
@@ -119,6 +126,7 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
       }
       localStorage.setItem('crickait_bio', newBio);
       setDisplayName(name);
+      setFullName(newFullName);
       setAvatar(newAvatar);
       setBio(newBio);
       onShowAlert({ title: 'Success', message: 'Profile updated successfully!' });
@@ -272,21 +280,13 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
     });
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-sm md:p-md bg-pitch-dark/85 backdrop-blur-md overflow-y-auto">
-      <div className="relative w-full max-w-5xl h-[90vh] md:h-[85vh] bg-surface-container-low border border-stadium-grey rounded-2xl shadow-2xl flex flex-col md:flex-row overflow-hidden glass-panel">
+  const settingsLayout = (
+    <div className="w-full max-w-5xl flex flex-col gap-md">
+      {/* Top section: Sidebar + Content */}
+      <div className="flex flex-col md:flex-row gap-md items-start">
         
-        {/* Close Button */}
-        <button 
-          className="absolute top-4 right-4 text-text-muted hover:text-on-background text-2xl transition-colors z-20 font-semibold"
-          onClick={onClose}
-          aria-label="Close Settings"
-        >
-          &times;
-        </button>
-
         {/* Sidebar Navigation */}
-        <aside className="w-full md:w-64 lg:w-72 flex-shrink-0 bg-surface-container-lowest/50 border-r border-stadium-grey p-sm flex flex-col justify-between">
+        <aside className="w-full md:w-64 lg:w-72 flex-shrink-0 bg-surface-container-low border border-stadium-grey rounded-2xl p-sm flex flex-col justify-between glass-panel">
           <div>
             <h1 className="font-headline-md text-headline-md text-xl mb-md px-base mt-2 flex items-center gap-xs text-on-background">
               <span className="material-symbols-outlined text-grass-green">settings</span> Settings
@@ -294,6 +294,7 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
             <nav className="space-y-1">
               <button 
                 className={`w-full flex items-center gap-sm px-md py-3 rounded-lg transition-all duration-200 border-l-4 ${activeTab === 'profile' ? 'text-grass-green dark:text-primary font-bold bg-primary-container/10 border-grass-green' : 'text-on-surface-variant hover:bg-surface-variant hover:text-on-surface border-transparent'}`}
+                type="button"
                 onClick={() => setActiveTab('profile')}
               >
                 <span className="material-symbols-outlined">person</span>
@@ -301,6 +302,7 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
               </button>
               <button 
                 className={`w-full flex items-center gap-sm px-md py-3 rounded-lg transition-all duration-200 border-l-4 ${activeTab === 'account' ? 'text-grass-green dark:text-primary font-bold bg-primary-container/10 border-grass-green' : 'text-on-surface-variant hover:bg-surface-variant hover:text-on-surface border-transparent'}`}
+                type="button"
                 onClick={() => setActiveTab('account')}
               >
                 <span className="material-symbols-outlined">account_circle</span>
@@ -308,6 +310,7 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
               </button>
               <button 
                 className={`w-full flex items-center gap-sm px-md py-3 rounded-lg transition-all duration-200 border-l-4 ${activeTab === 'preferences' ? 'text-grass-green dark:text-primary font-bold bg-primary-container/10 border-grass-green' : 'text-on-surface-variant hover:bg-surface-variant hover:text-on-surface border-transparent'}`}
+                type="button"
                 onClick={() => setActiveTab('preferences')}
               >
                 <span className="material-symbols-outlined">tune</span>
@@ -315,6 +318,7 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
               </button>
               <button 
                 className={`w-full flex items-center gap-sm px-md py-3 rounded-lg transition-all duration-200 border-l-4 ${activeTab === 'subscription' ? 'text-grass-green dark:text-primary font-bold bg-primary-container/10 border-grass-green' : 'text-on-surface-variant hover:bg-surface-variant hover:text-on-surface border-transparent'}`}
+                type="button"
                 onClick={() => setActiveTab('subscription')}
               >
                 <span className="material-symbols-outlined">workspace_premium</span>
@@ -330,11 +334,12 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
               <span className="font-label-caps text-[10px] text-trophy-gold uppercase tracking-wider font-semibold">Premium Edge</span>
             </div>
             <p className="text-[11px] text-text-muted leading-relaxed">
-              {plan === 'pro' ? 'You have unlocked unlimited AI insights!' : 'Unlock win probabilities and unlimited AI insights.'}
+              {plan === 'pro' ? 'You have unlocked unlimited AI insights!' : 'You are currently on the free tier. Upgrade to unlock AI-powered match predictions.'}
             </p>
             {plan !== 'pro' && (
               <button 
                 onClick={() => setActiveTab('subscription')}
+                type="button"
                 className="mt-sm w-full py-2 bg-gradient-to-r from-trophy-gold to-yellow-600 text-pitch-dark font-bold text-xs rounded-lg hover:brightness-110 transition-all"
               >
                 Upgrade Now
@@ -344,12 +349,11 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
         </aside>
 
         {/* Content Area */}
-        <section className="flex-grow p-sm md:p-lg overflow-y-auto custom-scrollbar">
-          
+        <section className="flex-grow bg-surface-container-low border border-stadium-grey rounded-2xl p-sm md:p-lg glass-panel overflow-y-auto max-h-[80vh] md:max-h-[75vh] w-full">
           {/* PROFILE TAB */}
           {activeTab === 'profile' && (
             <div className="space-y-lg animate-fade-in">
-              <div className="p-sm md:p-lg">
+              <div>
                 <div className="flex flex-col md:flex-row items-center gap-lg border-b border-outline-variant/20 pb-lg mb-lg">
                   <div className="relative group">
                     <div className="w-32 h-32 rounded-full border-4 border-grass-green/30 p-1">
@@ -363,19 +367,18 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
                     </div>
                     <button 
                       onClick={() => setIsEditingAvatar(!isEditingAvatar)} 
+                      type="button"
                       className="absolute bottom-0 right-0 p-2 bg-grass-green text-pitch-dark rounded-full shadow-lg hover:scale-105 transition-transform"
                     >
                       <span className="material-symbols-outlined text-sm">edit</span>
                     </button>
                   </div>
                   <div className="text-center md:text-left">
-                    <h2 className="font-headline-lg text-headline-lg text-2xl font-bold">{displayName}</h2>
-                    <p className="text-text-muted font-body-md text-sm">{plan === 'guest' ? 'Temporary Guest User' : `Stat Analyst & ${expertise} Fan`}</p>
+                    <h2 className="font-headline-lg text-headline-lg text-2xl font-bold">{fullName}</h2>
+                    <p className="text-text-muted font-body-md text-sm">Stat Enthusiast &amp; T20 Strategist</p>
                     <div className="flex gap-xs mt-sm justify-center md:justify-start">
                       <span className="px-3 py-1 bg-surface-container-highest rounded-full text-[10px] font-label-caps uppercase text-on-surface-variant">Level 12 Fan</span>
-                      <span className="px-3 py-1 bg-surface-container-highest rounded-full text-[10px] font-label-caps uppercase text-on-surface-variant">
-                        {plan === 'pro' ? 'PRO' : 'FREE'}
-                      </span>
+                      <span className="px-3 py-1 bg-surface-container-highest rounded-full text-[10px] font-label-caps uppercase text-on-surface-variant">Verified</span>
                     </div>
                   </div>
                 </div>
@@ -405,12 +408,14 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
                       />
                       <button 
                         onClick={() => fileInputRef.current.click()}
+                        type="button"
                         className="px-sm py-2 bg-surface-variant text-on-surface text-xs font-semibold rounded-lg hover:bg-surface-container-high transition-colors"
                       >
                         Upload custom file
                       </button>
                       <button 
                         onClick={() => { setIsEditingAvatar(false); }} 
+                        type="button"
                         className="px-sm py-2 bg-grass-green text-pitch-dark text-xs font-semibold rounded-lg hover:brightness-115 transition-colors ml-auto"
                       >
                         Done
@@ -424,15 +429,16 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
                     <div className="space-y-xs">
                       <label className="font-label-caps text-[10px] text-on-surface-variant uppercase ml-1 block">Full Name</label>
                       <input 
-                        className="w-full bg-surface-container-low border border-outline-variant/30 focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-xl px-md py-3 text-on-surface text-sm placeholder:text-text-muted" 
+                        className="w-full bg-surface-container border border-outline-variant/30 focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-xl px-md py-3 text-on-surface text-sm placeholder:text-text-muted" 
                         type="text" 
-                        defaultValue={displayName} 
+                        value={newFullName} 
+                        onChange={(e) => setNewFullName(e.target.value)}
                       />
                     </div>
                     <div className="space-y-xs">
                       <label className="font-label-caps text-[10px] text-on-surface-variant uppercase ml-1 block">Display Name</label>
                       <input 
-                        className="w-full bg-surface-container-low border border-outline-variant/30 focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-xl px-md py-3 text-on-surface text-sm" 
+                        className="w-full bg-surface-container border border-outline-variant/30 focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-xl px-md py-3 text-on-surface text-sm" 
                         type="text" 
                         value={newDisplayName} 
                         onChange={(e) => setNewDisplayName(e.target.value)}
@@ -442,7 +448,7 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
                   <div className="space-y-xs">
                     <label className="font-label-caps text-[10px] text-on-surface-variant uppercase ml-1 block">Bio</label>
                     <textarea 
-                      className="w-full bg-surface-container-low border border-outline-variant/30 focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-xl px-md py-3 text-on-surface text-sm resize-none" 
+                      className="w-full bg-surface-container border border-outline-variant/30 focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-xl px-md py-3 text-on-surface text-sm resize-none font-body-md" 
                       rows="3" 
                       value={newBio}
                       onChange={(e) => setNewBio(e.target.value)}
@@ -459,45 +465,20 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
                   </div>
                 </form>
               </div>
-
-              {/* Statistics Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-md px-sm md:px-lg">
-                <div className="glass-panel p-md rounded-xl border-l-4 border-grass-green flex justify-between items-center">
-                  <div>
-                    <span className="text-text-muted text-[10px] font-label-caps uppercase block mb-1">Live Sessions</span>
-                    <div className="font-stats-num text-stats-num text-xl text-on-surface">{sessionsCount}</div>
-                  </div>
-                  <span className="material-symbols-outlined text-grass-green text-2xl">sensors</span>
-                </div>
-                <div className="glass-panel p-md rounded-xl border-l-4 border-trophy-gold flex justify-between items-center">
-                  <div>
-                    <span className="text-text-muted text-[10px] font-label-caps uppercase block mb-1">Accuracy Score</span>
-                    <div className="font-stats-num text-stats-num text-xl text-on-surface">94.2%</div>
-                  </div>
-                  <span className="material-symbols-outlined text-trophy-gold text-2xl">trending_up</span>
-                </div>
-                <div className="glass-panel p-md rounded-xl border-l-4 border-primary flex justify-between items-center">
-                  <div>
-                    <span className="text-text-muted text-[10px] font-label-caps uppercase block mb-1">AI Inquiries</span>
-                    <div className="font-stats-num text-stats-num text-xl text-on-surface">{sessionsCount * 12 + 4}</div>
-                  </div>
-                  <span className="material-symbols-outlined text-primary text-2xl">smart_toy</span>
-                </div>
-              </div>
             </div>
           )}
 
           {/* ACCOUNT & DATA TAB */}
           {activeTab === 'account' && (
-            <div className="space-y-lg animate-fade-in p-sm md:p-lg">
-              <div className="glass-panel p-lg rounded-xl">
+            <div className="space-y-lg animate-fade-in">
+              <div className="bg-surface-container-low border border-outline-variant/20 p-lg rounded-xl">
                 <h3 className="font-headline-md text-lg text-on-background mb-lg">Account &amp; Security</h3>
                 <form className="space-y-md">
                   <div className="space-y-xs">
                     <label className="font-label-caps text-[10px] text-on-surface-variant uppercase ml-1 block">Email Address</label>
                     <div className="relative">
                       <input 
-                        className="w-full bg-surface-container-low border border-outline-variant/30 focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-xl px-md py-3 text-on-surface text-sm pr-12" 
+                        className="w-full bg-surface-container border border-outline-variant/30 focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-xl px-md py-3 text-on-surface text-sm pr-12" 
                         type="email" 
                         value={email} 
                         readOnly 
@@ -510,7 +491,7 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
                     <div className="space-y-xs">
                       <label className="font-label-caps text-[10px] text-on-surface-variant uppercase ml-1 block">Current Password</label>
                       <input 
-                        className="w-full bg-surface-container-low border border-outline-variant/30 focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-xl px-md py-3 text-on-surface text-sm" 
+                        className="w-full bg-surface-container border border-outline-variant/30 focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-xl px-md py-3 text-on-surface text-sm" 
                         placeholder="••••••••••••" 
                         type="password" 
                       />
@@ -518,7 +499,7 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
                     <div className="space-y-xs">
                       <label className="font-label-caps text-[10px] text-on-surface-variant uppercase ml-1 block">New Password</label>
                       <input 
-                        className="w-full bg-surface-container-low border border-outline-variant/30 focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-xl px-md py-3 text-on-surface text-sm" 
+                        className="w-full bg-surface-container border border-outline-variant/30 focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-xl px-md py-3 text-on-surface text-sm" 
                         placeholder="New Password" 
                         type="password" 
                       />
@@ -541,7 +522,7 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
               </div>
 
               {/* Chat & Data Management section */}
-              <div className="glass-panel p-lg rounded-xl">
+              <div className="bg-surface-container border border-outline-variant/20 p-lg rounded-xl">
                 <h3 className="font-headline-md text-lg text-on-background mb-lg">Chat &amp; Personalization History</h3>
                 <div className="space-y-md">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-md bg-surface-container-low/50 border border-outline-variant/10 rounded-xl gap-sm">
@@ -551,6 +532,7 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
                     </div>
                     <button 
                       onClick={handleClearAllChats}
+                      type="button"
                       className="px-md py-2 bg-error/10 hover:bg-error/20 text-error border border-error/30 rounded-lg text-xs font-bold shrink-0"
                     >
                       Clear Chats
@@ -564,6 +546,7 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
                     </div>
                     <button 
                       onClick={handleExportChats}
+                      type="button"
                       className="px-md py-2 bg-surface-variant hover:bg-surface-container-high text-on-surface rounded-lg text-xs font-bold shrink-0"
                     >
                       Export Data
@@ -577,6 +560,7 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
                     </div>
                     <button 
                       onClick={handleClearFavoritesProfile}
+                      type="button"
                       className="px-md py-2 bg-error/10 hover:bg-error/20 text-error border border-error/30 rounded-lg text-xs font-bold shrink-0"
                     >
                       Reset Favorites
@@ -586,7 +570,7 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
               </div>
 
               {/* Danger Zone */}
-              <div className="glass-panel p-lg rounded-xl border border-error/20 bg-error-container/5">
+              <div className="bg-surface-container border border-error/20 p-lg rounded-xl bg-error-container/5">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-sm">
                   <div>
                     <p className="font-semibold text-error text-sm">Danger Zone</p>
@@ -594,6 +578,7 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
                   </div>
                   <button 
                     onClick={handleDeleteAccount}
+                    type="button"
                     className="px-md py-2 border border-error/50 text-error hover:bg-error hover:text-on-error transition-all rounded-lg text-xs font-bold shrink-0"
                   >
                     Delete Account
@@ -605,8 +590,8 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
 
           {/* PREFERENCES & PERSONALIZATION TAB */}
           {activeTab === 'preferences' && (
-            <div className="space-y-lg animate-fade-in p-sm md:p-lg">
-              <div className="glass-panel p-lg rounded-xl">
+            <div className="space-y-lg animate-fade-in">
+              <div className="bg-surface-container-low border border-outline-variant/20 p-lg rounded-xl">
                 <h3 className="font-headline-md text-lg text-on-background mb-lg">App Preferences</h3>
                 <div className="space-y-md">
                   {/* Push Notifications Toggle */}
@@ -622,6 +607,7 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
                     </div>
                     <button 
                       onClick={() => setPushNotifications(!pushNotifications)}
+                      type="button"
                       className={`w-12 h-6 rounded-full relative transition-colors duration-300 ${pushNotifications ? 'bg-grass-green' : 'bg-outline-variant/50'}`}
                     >
                       <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all duration-300 ${pushNotifications ? 'right-1' : 'left-1'}`}></span>
@@ -642,7 +628,7 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
                     <select 
                       value={theme}
                       onChange={(e) => { setTheme(e.target.value); applyTheme(e.target.value); }}
-                      className="bg-surface-container-highest border border-outline-variant/30 text-on-surface text-xs rounded-lg px-3 py-1.5 focus:ring-grass-green"
+                      className="bg-surface-container border border-outline-variant/30 text-on-surface text-xs rounded-lg px-3 py-1.5 focus:ring-grass-green"
                     >
                       <option value="dark">Classic Dark</option>
                       <option value="green">Pitch Green</option>
@@ -664,7 +650,7 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
                     <select 
                       value={language}
                       onChange={(e) => setLanguage(e.target.value)}
-                      className="bg-surface-container-highest border border-outline-variant/30 text-on-surface text-xs rounded-lg px-3 py-1.5 focus:ring-grass-green"
+                      className="bg-surface-container border border-outline-variant/30 text-on-surface text-xs rounded-lg px-3 py-1.5 focus:ring-grass-green"
                     >
                       <option>English (UK)</option>
                       <option>Hindi</option>
@@ -675,7 +661,7 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
               </div>
 
               {/* Cricket Chat Personalization form */}
-              <div className="glass-panel p-lg rounded-xl">
+              <div className="bg-surface-container-low border border-outline-variant/20 p-lg rounded-xl">
                 <h3 className="font-headline-md text-lg text-on-background mb-lg flex items-center gap-xs">
                   <span className="material-symbols-outlined text-grass-green">smart_toy</span> AI Chat Personalization
                 </h3>
@@ -696,10 +682,10 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
                     </select>
                   </div>
 
-                  {/* Verbosity level */}
+                  {/* Response Verbosity level */}
                   <div className="space-y-xs">
                     <label className="font-label-caps text-[10px] text-on-surface-variant uppercase ml-1 block">Response Verbosity</label>
-                    <div className="flex items-center gap-sm p-sm bg-surface-container-lowest/50 border border-outline-variant/10 rounded-xl">
+                    <div className="flex items-center gap-sm p-sm bg-surface-container/50 border border-outline-variant/10 rounded-xl">
                       <span className="text-xs text-text-muted font-semibold">Concise</span>
                       <input 
                         type="range" 
@@ -716,7 +702,7 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
                   {/* Match Formats checkbox chips */}
                   <div className="space-y-xs">
                     <label className="font-label-caps text-[10px] text-on-surface-variant uppercase ml-1 block">Preferred Match Formats</label>
-                    <div className="flex gap-sm p-sm bg-surface-container-lowest/50 border border-outline-variant/10 rounded-xl">
+                    <div className="flex gap-sm p-sm bg-surface-container/50 border border-outline-variant/10 rounded-xl">
                       {['T20', 'ODI', 'Test'].map(fmt => (
                         <label key={fmt} className="flex items-center gap-xs cursor-pointer select-none text-sm text-on-surface">
                           <input 
@@ -758,7 +744,7 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
 
           {/* SUBSCRIPTION TAB */}
           {activeTab === 'subscription' && (
-            <div className="space-y-lg animate-fade-in p-sm md:p-lg relative">
+            <div className="space-y-lg animate-fade-in relative">
               {/* Background gold glow effect */}
               <div className="absolute -top-24 -right-24 w-64 h-64 bg-trophy-gold/10 blur-[80px] rounded-full pointer-events-none"></div>
               
@@ -852,6 +838,7 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
                               message: 'Upgrade flow is currently locked for this demo session. Please contact support.'
                             });
                           }}
+                          type="button"
                           className="w-full py-2.5 bg-gradient-to-r from-trophy-gold to-yellow-600 text-pitch-dark font-bold text-xs rounded-xl hover:brightness-110 transition-all shadow-[0_0_20px_rgba(255,215,0,0.2)]"
                         >
                           Upgrade Plan
@@ -864,6 +851,54 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
             </div>
           )}
         </section>
+      </div>
+
+      {/* Bottom Section: Statistics Cards */}
+      {activeTab === 'profile' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-md w-full">
+          <div className="glass-panel p-md rounded-xl border-2 border-grass-green flex justify-between items-center bg-surface-container-low shadow-[0_0_15px_rgba(16,163,127,0.15)]">
+            <div>
+              <span className="text-text-muted text-[10px] font-label-caps uppercase block mb-1">QUESTIONS ASKED</span>
+              <div className="font-stats-num text-stats-num text-xl text-on-surface">1,284</div>
+            </div>
+            <span className="material-symbols-outlined text-grass-green text-2xl">smart_toy</span>
+          </div>
+          <div className="glass-panel p-md rounded-xl border-2 border-trophy-gold flex justify-between items-center bg-surface-container-low shadow-[0_0_15px_rgba(255,215,0,0.15)]">
+            <div>
+              <span className="text-text-muted text-[10px] font-label-caps uppercase block mb-1">ACCURACY SCORE</span>
+              <div className="font-stats-num text-stats-num text-xl text-on-surface">94.2%</div>
+            </div>
+            <span className="material-symbols-outlined text-trophy-gold text-2xl">trending_up</span>
+          </div>
+          <div className="glass-panel p-md rounded-xl border-2 border-primary flex justify-between items-center bg-surface-container-low shadow-[0_0_15px_rgba(97,219,180,0.15)]">
+            <div>
+              <span className="text-text-muted text-[10px] font-label-caps uppercase block mb-1">LIVE SESSIONS</span>
+              <div className="font-stats-num text-stats-num text-xl text-on-surface">{sessionsCount || 42}</div>
+            </div>
+            <span className="material-symbols-outlined text-primary text-2xl">sensors</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  if (isInline) {
+    return settingsLayout;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-sm md:p-md bg-pitch-dark/85 backdrop-blur-md overflow-y-auto">
+      <div className="relative w-full max-w-5xl flex flex-col gap-md">
+        {/* Close Button */}
+        <button 
+          className="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-surface-container-high border border-stadium-grey flex items-center justify-center text-text-muted hover:text-on-background text-2xl transition-colors z-20 font-semibold"
+          onClick={onClose}
+          type="button"
+          aria-label="Close Settings"
+        >
+          &times;
+        </button>
+        {settingsLayout}
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { API_URL } from '../services/api';
+import SettingsModal from './SettingsModal';
 
 function getBrowserFingerprint() {
   try {
@@ -45,6 +46,7 @@ function getBrowserFingerprint() {
 export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState(initialMode);
+  const [showSettings, setShowSettings] = useState(false);
   
   // Auth Form State
   const [username, setUsername] = useState('');
@@ -253,6 +255,7 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
   const openAuth = (modeType = 'login') => {
     setModalMode(modeType);
     setIsModalOpen(true);
+    setShowSettings(false);
   };
 
   return (
@@ -265,218 +268,249 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
             <span className="text-headline-md font-headline-md font-extrabold text-grass-green dark:text-primary">CrickAlt</span>
           </div>
           <div className="hidden md:flex items-center gap-md">
-            <a className="text-grass-green dark:text-primary font-bold border-b-2 border-grass-green pb-1 font-body-md text-body-md" href="#" onClick={(e) => { e.preventDefault(); }}>AI Assistant</a>
+            <a className={`transition-colors duration-200 font-body-md text-body-md ${!showSettings ? 'text-grass-green dark:text-primary font-bold border-b-2 border-grass-green pb-1' : 'text-on-surface-variant hover:text-on-surface'}`} href="#" onClick={(e) => { e.preventDefault(); setShowSettings(false); }}>AI Assistant</a>
             <a className="text-on-surface-variant hover:text-on-surface transition-colors duration-200 font-body-md text-body-md" href="#" onClick={(e) => { e.preventDefault(); openAuth('signup'); }}>Live Scores</a>
             <a className="text-on-surface-variant hover:text-on-surface transition-colors duration-200 font-body-md text-body-md" href="#" onClick={(e) => { e.preventDefault(); openAuth('signup'); }}>Fixtures</a>
             <a className="text-on-surface-variant hover:text-on-surface transition-colors duration-200 font-body-md text-body-md" href="#" onClick={(e) => { e.preventDefault(); openAuth('signup'); }}>News</a>
           </div>
           <div className="flex items-center gap-sm">
+            <div className="relative hidden md:block">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-on-surface-variant text-[18px]">search</span>
+              <input 
+                type="text" 
+                placeholder="Search matches..." 
+                className="bg-surface-container border border-outline-variant/30 rounded-full pl-9 pr-4 py-1.5 text-xs text-on-surface placeholder:text-on-surface-variant/50 focus:border-grass-green focus:ring-1 focus:ring-grass-green w-48 transition-all"
+              />
+            </div>
             <button className="material-symbols-outlined text-on-surface-variant hover:text-grass-green" onClick={() => openAuth('login')}>notifications</button>
-            <button className="material-symbols-outlined text-on-surface-variant hover:text-grass-green" onClick={() => openAuth('login')}>settings</button>
+            <button 
+              className={`material-symbols-outlined rounded-full p-1.5 transition-all duration-200 ${showSettings ? 'bg-grass-green/10 text-grass-green border border-grass-green/30' : 'text-on-surface-variant hover:text-grass-green'}`} 
+              onClick={() => setShowSettings(!showSettings)}
+            >
+              settings
+            </button>
             <button className="hidden md:block px-md py-xs bg-grass-green text-pitch-dark font-bold rounded-full hover:scale-95 transition-all duration-150 active:scale-95" onClick={() => openAuth('login')}>Sign In</button>
           </div>
         </nav>
       </header>
 
       <main className="relative overflow-hidden">
-        {/* Hero Section */}
-        <section className="relative pt-xl pb-32 px-md max-w-container-max mx-auto min-h-[85vh] flex flex-col justify-center items-center">
-          <div className="relative z-10 text-center mb-xl">
-            <h1 className="font-display-lg text-display-lg md:text-[64px] leading-tight mb-md tracking-tight">
-              Cricket Insight <br/>
-              <span className="text-grass-green">Powered by Intelligence</span>
-            </h1>
-            <p className="text-text-muted font-body-lg text-body-lg max-w-2xl mx-auto">
-              The game’s deepest data, delivered instantly. Ask anything, from historic centuries to real-time win probabilities.
-            </p>
+        {showSettings ? (
+          <div className="py-xl max-w-container-max mx-auto px-md min-h-[80vh] flex flex-col items-center justify-start">
+            <SettingsModal 
+              isInline={true} 
+              onClose={() => setShowSettings(false)}
+              onShowAlert={(alertObj) => alert(alertObj.message)}
+              onConfirmAlert={(confirmObj) => {
+                if (window.confirm(confirmObj.message)) {
+                  confirmObj.onConfirm();
+                }
+              }}
+              onLogout={() => {}}
+            />
           </div>
-
-          {/* AI Interface Canvas */}
-          <div className="relative z-10 w-full max-w-4xl mx-auto glass-card rounded-xl overflow-hidden ai-glow border-grass-green/30">
-            <div className="p-md h-[400px] overflow-y-auto scroll-hide space-y-md flex flex-col" id="chat-container">
-              {mockMessages.map((msg, index) => (
-                <div key={index} className={`flex flex-col gap-xs max-w-[80%] ${msg.role === 'user' ? 'ml-auto items-end' : ''}`}>
-                  <div className={`p-sm rounded-xl rounded-tl-none border-l-4 ${msg.role === 'user' ? 'bg-pitch-dark text-on-surface border border-outline-variant/30 border-l-0 rounded-tr-none' : 'bg-stadium-grey text-on-surface border-grass-green'}`}>
-                    <p className="font-body-md whitespace-pre-wrap">{msg.content}</p>
-                  </div>
-                  <span className="text-[10px] font-label-caps text-text-muted px-2">
-                    {msg.role === 'user' ? 'YOU' : 'CRICKALT AI'}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            {/* Suggestion Chips */}
-            <div className="px-md pb-sm flex flex-wrap gap-xs bg-surface-container-lowest/50">
-              <button className="px-sm py-xs rounded-full border border-outline-variant bg-surface-container-low text-on-surface-variant hover:border-grass-green hover:text-grass-green transition-all text-[13px] font-medium" onClick={() => triggerMockChat('Who has the most centuries in Test cricket?')}>
-                "Who has the most centuries in Test cricket?"
-              </button>
-              <button className="px-sm py-xs rounded-full border border-outline-variant bg-surface-container-low text-on-surface-variant hover:border-grass-green hover:text-grass-green transition-all text-[13px] font-medium" onClick={() => triggerMockChat("What is Virat Kohli's average in Australia?")}>
-                "Virat Kohli's average in Australia?"
-              </button>
-              <button className="px-sm py-xs rounded-full border border-outline-variant bg-surface-container-low text-on-surface-variant hover:border-grass-green hover:text-grass-green transition-all text-[13px] font-medium" onClick={() => triggerMockChat('Last 5 IPL winners')}>
-                "Last 5 IPL winners"
-              </button>
-            </div>
-
-            {/* Input Form */}
-            <div className="p-sm border-t border-stadium-grey bg-surface-container-lowest/50 backdrop-blur-md">
-              <form className="flex items-center gap-sm relative" onSubmit={handleChatSubmit}>
-                <input 
-                  className="w-full bg-surface-container border-outline-variant focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-full px-md py-sm text-on-surface placeholder:text-on-surface-variant/50 pr-12 text-sm" 
-                  placeholder="Ask CrickAlt anything..." 
-                  type="text"
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                />
-                <button className="absolute right-2 p-xs bg-grass-green text-pitch-dark rounded-full hover:scale-105 transition-transform" type="submit">
-                  <span className="material-symbols-outlined align-middle">send</span>
-                </button>
-              </form>
-            </div>
-          </div>
-        </section>
-
-        {/* Live Match Highlights Section */}
-        <section className="bg-surface-container-lowest py-xl border-t border-stadium-grey">
-          <div className="max-w-container-max mx-auto px-md">
-            <div className="flex flex-col md:flex-row justify-between items-end mb-lg gap-md">
-              <div>
-                <div className="flex items-center gap-xs mb-xs">
-                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-                  <span className="text-red-500 font-label-caps tracking-widest uppercase">Live Now</span>
-                </div>
-                <h2 className="font-headline-lg text-headline-lg">Live Match Highlights</h2>
-              </div>
-              <button onClick={() => openAuth('signup')} className="px-lg py-sm bg-gradient-to-r from-trophy-gold to-yellow-600 text-pitch-dark font-bold rounded-full flex items-center gap-xs hover:shadow-lg hover:shadow-trophy-gold/20 transition-all group">
-                <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>lock</span>
-                Sign up for full live scoreboards
-                <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">chevron_right</span>
-              </button>
-            </div>
-
-            {/* Bento Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-md">
-              {/* Featured Live Match */}
-              <div onClick={() => openAuth('signup')} className="md:col-span-8 group relative overflow-hidden rounded-xl border-t-4 border-trophy-gold bg-stadium-grey shadow-xl p-lg cursor-pointer">
-                <div className="flex justify-between items-start mb-lg">
-                  <span className="px-sm py-base rounded-full bg-pitch-dark text-grass-green border border-grass-green/30 text-xs font-label-caps">ICC WORLD TEST CHAMPIONSHIP</span>
-                  <span className="text-on-surface-variant font-stats-num text-stats-num text-sm">DAY 4, OVER 82.4</span>
-                </div>
-                <div className="flex flex-col md:flex-row items-center justify-between gap-xl">
-                  <div className="flex flex-col items-center gap-sm">
-                    <div className="w-20 h-20 rounded-full bg-blue-900 flex items-center justify-center border-4 border-stadium-grey shadow-lg overflow-hidden">
-                      <img className="w-full h-full object-cover" alt="India flag" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA1PZPKNzK6f5Ja-hu6TcKNEA0u0_ktoHZsmULLYpTDR_5dWGPLTEF_6FFMHYaWRNDsRIG5ohHaRgximc-zFdVv_8ZPUQvyIQBiyVumfKB_qPjdmJ4kcLTrb9kCOdWGYFdX_lL31gXwS-sCe13gS72ZE0FdB_oSlQVqr20JFKEZjqzcMtlRyWr7AScEAg5-DGivConNnPgTA5Ep79MyhX1ISIZUd3ZeIb2p4JO7j1UbsIT1IA56PRiOAZpT39c8vuFpWW059bBkRRo"/>
-                    </div>
-                    <h3 className="font-headline-md text-headline-md">INDIA</h3>
-                    <p className="font-stats-num text-stats-num text-grass-green">432 &amp; 281/4</p>
-                  </div>
-                  <div className="text-center">
-                    <span className="font-label-caps text-on-surface-variant block mb-base uppercase text-xs">Target: 412</span>
-                    <span className="font-headline-md text-headline-md text-trophy-gold">VS</span>
-                    <span className="block mt-base font-body-md text-text-muted text-sm">India leads by 302 runs</span>
-                  </div>
-                  <div className="flex flex-col items-center gap-sm">
-                    <div className="w-20 h-20 rounded-full bg-green-900 flex items-center justify-center border-4 border-stadium-grey shadow-lg overflow-hidden">
-                      <img className="w-full h-full object-cover" alt="South Africa flag" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCn1Bj3Q2_8QpwKEOHpfGtP2roVSuXFGUGdfjiBwHag4GWmAI1Ked0_zD9e3xL17gukC-5BRYjw5MEstLzQogglEGzHBw4ukuUGSmo8Z-2Ps4nmiu7yvAVrJrjTErGd5WkLe4K7Qrc2_E9NsaimomedSuYXl1qzF-1yIKvvVgl6MjvsJ_OF6LkqL5z751XBXLNX1Js8hGtyaoWg8yupti-tIMMdKmP4hArI7_P9ZM-ab7ClSkD-xSU0hhE3-VQLTcaCwk1oGJgkt9A"/>
-                    </div>
-                    <h3 className="font-headline-md text-headline-md">S. AFRICA</h3>
-                    <p className="font-stats-num text-stats-num text-on-surface-variant">411</p>
-                  </div>
-                </div>
-                <div className="mt-lg pt-lg border-t border-outline-variant/30 flex justify-center">
-                  <div className="flex gap-md overflow-x-auto pb-xs scroll-hide font-mono text-sm">
-                    <div className="text-center px-md border-r border-outline-variant/30">
-                      <span className="text-label-caps text-text-muted text-xs block">BATTER</span>
-                      <p className="font-stats-num text-stats-num text-sm">Kohli 104*</p>
-                    </div>
-                    <div className="text-center px-md">
-                      <span className="text-label-caps text-text-muted text-xs block">BOWLER</span>
-                      <p className="font-stats-num text-stats-num text-sm">Rabada 3/88</p>
-                    </div>
-                  </div>
-                </div>
+        ) : (
+          <>
+            {/* Hero Section */}
+            <section className="relative pt-xl pb-32 px-md max-w-container-max mx-auto min-h-[85vh] flex flex-col justify-center items-center">
+              <div className="relative z-10 text-center mb-xl">
+                <h1 className="font-display-lg text-display-lg md:text-[64px] leading-tight mb-md tracking-tight">
+                  Cricket Insight <br/>
+                  <span className="text-grass-green">Powered by Intelligence</span>
+                </h1>
+                <p className="text-text-muted font-body-lg text-body-lg max-w-2xl mx-auto">
+                  The game’s deepest data, delivered instantly. Ask anything, from historic centuries to real-time win probabilities.
+                </p>
               </div>
 
-              {/* BBL Card */}
-              <div onClick={() => openAuth('signup')} className="md:col-span-4 rounded-xl border border-stadium-grey bg-surface-container-low p-md flex flex-col justify-between hover:border-grass-green/50 transition-colors cursor-pointer group">
-                <div className="flex justify-between items-start">
-                  <span className="font-label-caps text-text-muted text-[10px] uppercase">Big Bash League</span>
-                  <span className="material-symbols-outlined text-trophy-gold">bolt</span>
-                </div>
-                <div className="space-y-sm my-md">
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-xs">
-                      <div className="w-6 h-6 bg-pink-500 rounded-full"></div>
-                      <span className="font-headline-md text-sm">SYD SIX</span>
+              {/* AI Interface Canvas */}
+              <div className="relative z-10 w-full max-w-4xl mx-auto glass-card rounded-xl overflow-hidden ai-glow border-grass-green/30">
+                <div className="p-md h-[400px] overflow-y-auto scroll-hide space-y-md flex flex-col" id="chat-container">
+                  {mockMessages.map((msg, index) => (
+                    <div key={index} className={`flex flex-col gap-xs max-w-[80%] ${msg.role === 'user' ? 'ml-auto items-end' : ''}`}>
+                      <div className={`p-sm rounded-xl rounded-tl-none border-l-4 ${msg.role === 'user' ? 'bg-pitch-dark text-on-surface border border-outline-variant/30 border-l-0 rounded-tr-none' : 'bg-stadium-grey text-on-surface border-grass-green'}`}>
+                        <p className="font-body-md whitespace-pre-wrap">{msg.content}</p>
+                      </div>
+                      <span className="text-[10px] font-label-caps text-text-muted px-2">
+                        {msg.role === 'user' ? 'YOU' : 'CRICKALT AI'}
+                      </span>
                     </div>
-                    <span className="font-stats-num text-sm font-bold">188/6</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-xs opacity-50">
-                      <div className="w-6 h-6 bg-blue-400 rounded-full"></div>
-                      <span className="font-headline-md text-sm">ADL STR</span>
+                  ))}
+                </div>
+
+                {/* Suggestion Chips */}
+                <div className="px-md pb-sm flex flex-wrap gap-xs bg-surface-container-lowest/50">
+                  <button className="px-sm py-xs rounded-full border border-outline-variant bg-surface-container-low text-on-surface-variant hover:border-grass-green hover:text-grass-green transition-all text-[13px] font-medium" onClick={() => triggerMockChat('Who has the most centuries in Test cricket?')}>
+                    "Who has the most centuries in Test cricket?"
+                  </button>
+                  <button className="px-sm py-xs rounded-full border border-outline-variant bg-surface-container-low text-on-surface-variant hover:border-grass-green hover:text-grass-green transition-all text-[13px] font-medium" onClick={() => triggerMockChat("What is Virat Kohli's average in Australia?")}>
+                    "Virat Kohli's average in Australia?"
+                  </button>
+                  <button className="px-sm py-xs rounded-full border border-outline-variant bg-surface-container-low text-on-surface-variant hover:border-grass-green hover:text-grass-green transition-all text-[13px] font-medium" onClick={() => triggerMockChat('Last 5 IPL winners')}>
+                    "Last 5 IPL winners"
+                  </button>
+                </div>
+
+                {/* Input Form */}
+                <div className="p-sm border-t border-stadium-grey bg-surface-container-lowest/50 backdrop-blur-md">
+                  <form className="flex items-center gap-sm relative" onSubmit={handleChatSubmit}>
+                    <input 
+                      className="w-full bg-surface-container border-outline-variant focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-full px-md py-sm text-on-surface placeholder:text-on-surface-variant/50 pr-12 text-sm" 
+                      placeholder="Ask CrickAlt anything..." 
+                      type="text"
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                    />
+                    <button className="absolute right-2 p-xs bg-grass-green text-pitch-dark rounded-full hover:scale-105 transition-transform" type="submit">
+                      <span className="material-symbols-outlined align-middle">send</span>
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </section>
+
+            {/* Live Match Highlights Section */}
+            <section className="bg-surface-container-lowest py-xl border-t border-stadium-grey">
+              <div className="max-w-container-max mx-auto px-md">
+                <div className="flex flex-col md:flex-row justify-between items-end mb-lg gap-md">
+                  <div>
+                    <div className="flex items-center gap-xs mb-xs">
+                      <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                      <span className="text-red-500 font-label-caps tracking-widest uppercase">Live Now</span>
                     </div>
-                    <span className="font-stats-num text-sm text-text-muted">Yet to bat</span>
+                    <h2 className="font-headline-lg text-headline-lg">Live Match Highlights</h2>
+                  </div>
+                  <button onClick={() => openAuth('signup')} className="px-lg py-sm bg-gradient-to-r from-trophy-gold to-yellow-600 text-pitch-dark font-bold rounded-full flex items-center gap-xs hover:shadow-lg hover:shadow-trophy-gold/20 transition-all group">
+                    <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>lock</span>
+                    Sign up for full live scoreboards
+                    <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">chevron_right</span>
+                  </button>
+                </div>
+
+                {/* Bento Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-md">
+                  {/* Featured Live Match */}
+                  <div onClick={() => openAuth('signup')} className="md:col-span-8 group relative overflow-hidden rounded-xl border-t-4 border-trophy-gold bg-stadium-grey shadow-xl p-lg cursor-pointer">
+                    <div className="flex justify-between items-start mb-lg">
+                      <span className="px-sm py-base rounded-full bg-pitch-dark text-grass-green border border-grass-green/30 text-xs font-label-caps">ICC WORLD TEST CHAMPIONSHIP</span>
+                      <span className="text-on-surface-variant font-stats-num text-stats-num text-sm">DAY 4, OVER 82.4</span>
+                    </div>
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-xl">
+                      <div className="flex flex-col items-center gap-sm">
+                        <div className="w-20 h-20 rounded-full bg-blue-900 flex items-center justify-center border-4 border-stadium-grey shadow-lg overflow-hidden">
+                          <img className="w-full h-full object-cover" alt="India flag" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA1PZPKNzK6f5Ja-hu6TcKNEA0u0_ktoHZsmULLYpTDR_5dWGPLTEF_6FFMHYaWRNDsRIG5ohHaRgximc-zFdVv_8ZPUQvyIQBiyVumfKB_qPjdmJ4kcLTrb9kCOdWGYFdX_lL31gXwS-sCe13gS72ZE0FdB_oSlQVqr20JFKEZjqzcMtlRyWr7AScEAg5-DGivConNnPgTA5Ep79MyhX1ISIZUd3ZeIb2p4JO7j1UbsIT1IA56PRiOAZpT39c8vuFpWW059bBkRRo"/>
+                        </div>
+                        <h3 className="font-headline-md text-headline-md">INDIA</h3>
+                        <p className="font-stats-num text-stats-num text-grass-green">432 &amp; 281/4</p>
+                      </div>
+                      <div className="text-center">
+                        <span className="font-label-caps text-on-surface-variant block mb-base uppercase text-xs">Target: 412</span>
+                        <span className="font-headline-md text-headline-md text-trophy-gold">VS</span>
+                        <span className="block mt-base font-body-md text-text-muted text-sm">India leads by 302 runs</span>
+                      </div>
+                      <div className="flex flex-col items-center gap-sm">
+                        <div className="w-20 h-20 rounded-full bg-green-900 flex items-center justify-center border-4 border-stadium-grey shadow-lg overflow-hidden">
+                          <img className="w-full h-full object-cover" alt="South Africa flag" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCn1Bj3Q2_8QpwKEOHpfGtP2roVSuXFGUGdfjiBwHag4GWmAI1Ked0_zD9e3xL17gukC-5BRYjw5MEstLzQogglEGzHBw4ukuUGSmo8Z-2Ps4nmiu7yvAVrJrjTErGd5WkLe4K7Qrc2_E9NsaimomedSuYXl1qzF-1yIKvvVgl6MjvsJ_OF6LkqL5z751XBXLNX1Js8hGtyaoWg8yupti-tIMMdKmP4hArI7_P9ZM-ab7ClSkD-xSU0hhE3-VQLTcaCwk1oGJgkt9A"/>
+                        </div>
+                        <h3 className="font-headline-md text-headline-md">S. AFRICA</h3>
+                        <p className="font-stats-num text-stats-num text-on-surface-variant">411</p>
+                      </div>
+                    </div>
+                    <div className="mt-lg pt-lg border-t border-outline-variant/30 flex justify-center">
+                      <div className="flex gap-md overflow-x-auto pb-xs scroll-hide font-mono text-sm">
+                        <div className="text-center px-md border-r border-outline-variant/30">
+                          <span className="text-label-caps text-text-muted text-xs block">BATTER</span>
+                          <p className="font-stats-num text-stats-num text-sm">Kohli 104*</p>
+                        </div>
+                        <div className="text-center px-md">
+                          <span className="text-label-caps text-text-muted text-xs block">BOWLER</span>
+                          <p className="font-stats-num text-stats-num text-sm">Rabada 3/88</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* BBL Card */}
+                  <div onClick={() => openAuth('signup')} className="md:col-span-4 rounded-xl border border-stadium-grey bg-surface-container-low p-md flex flex-col justify-between hover:border-grass-green/50 transition-colors cursor-pointer group">
+                    <div className="flex justify-between items-start">
+                      <span className="font-label-caps text-text-muted text-[10px] uppercase">Big Bash League</span>
+                      <span className="material-symbols-outlined text-trophy-gold">bolt</span>
+                    </div>
+                    <div className="space-y-sm my-md">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-xs">
+                          <div className="w-6 h-6 bg-pink-500 rounded-full"></div>
+                          <span className="font-headline-md text-sm">SYD SIX</span>
+                        </div>
+                        <span className="font-stats-num text-sm font-bold">188/6</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-xs opacity-50">
+                          <div className="w-6 h-6 bg-blue-400 rounded-full"></div>
+                          <span className="font-headline-md text-sm">ADL STR</span>
+                        </div>
+                        <span className="font-stats-num text-sm text-text-muted">Yet to bat</span>
+                      </div>
+                    </div>
+                    <p className="text-xs font-body-md text-grass-green">Sixers opted to bat. Innings break soon.</p>
+                  </div>
+
+                  {/* Side Card 2 (Quick Insights) */}
+                  <div onClick={() => openAuth('login')} className="md:col-span-4 rounded-xl border border-stadium-grey bg-pitch-dark p-md flex flex-col justify-center items-center text-center cursor-pointer group hover:bg-stadium-grey transition-all">
+                    <div className="w-12 h-12 rounded-full bg-grass-green/10 flex items-center justify-center mb-sm">
+                      <span className="material-symbols-outlined text-grass-green">analytics</span>
+                    </div>
+                    <h4 className="font-headline-md text-md mb-xs">CrickAlt Insight</h4>
+                    <p className="text-on-surface-variant text-sm mb-md">India has a <span className="text-grass-green font-bold">88%</span> win probability based on the current run rate and pitch deterioration.</p>
+                    <button className="text-grass-green font-label-caps text-[11px] flex items-center gap-xs group-hover:underline">SEE FULL REPORT <span className="material-symbols-outlined text-[14px]">open_in_new</span></button>
+                  </div>
+
+                  {/* Side Card 3 (Recent News) */}
+                  <div onClick={() => openAuth('login')} className="md:col-span-4 rounded-xl border border-stadium-grey bg-surface-container-low p-md flex gap-md overflow-hidden hover:border-outline-variant transition-colors cursor-pointer group">
+                    <div className="w-24 shrink-0 rounded-lg overflow-hidden h-full bg-surface-container-high">
+                      <img className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="cricketer hit" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCcl1oUMo9iVy1J8U3wZL3IqFW5GHAnGeNSgTDKnjhvuwviQmCxTNl7R2iHoKx7G_8GCRAxk5-OobUv5c-EyMzmHfhLIwlxsFH-PktUsGSkX4sSxprF5fcrGa895mxtcBks5IUR9cffC3hP3zDiGvbAgypry1fuWZK27aziRnMakJFeOvV-0w4Yzp09kKjxgQsZCKaS1UVSRbYl4R49i8-Lave3evj-LwUYZTACQCKrnvsZNe3jBRstlMKfZfh2-Czz8N8RXoSRr1o"/>
+                    </div>
+                    <div className="flex flex-col justify-center">
+                      <span className="text-[10px] font-label-caps text-grass-green uppercase mb-xs">Transfer News</span>
+                      <h5 className="font-headline-md text-sm leading-tight">Star player traded to Mumbai Indians for record fee.</h5>
+                    </div>
+                  </div>
+
+                  {/* Side Card 4 (Stats CTA) */}
+                  <div onClick={() => openAuth('login')} className="md:col-span-4 rounded-xl border border-trophy-gold/20 bg-gradient-to-br from-stadium-grey to-pitch-dark p-md flex flex-col justify-between group hover:border-trophy-gold/50 cursor-pointer transition-all">
+                    <div>
+                      <span className="text-trophy-gold material-symbols-outlined mb-sm" style={{ fontVariationSettings: "'FILL' 1" }}>stars</span>
+                      <h4 className="font-headline-md text-md">Compare All-Time Greats</h4>
+                      <p className="text-text-muted text-xs mt-xs">Deep dive into player career metrics with our advanced AI visualization engine.</p>
+                    </div>
+                    <button className="mt-md w-full py-xs bg-surface-variant rounded-lg text-xs font-bold text-on-surface hover:bg-grass-green hover:text-pitch-dark transition-colors">START COMPARISON</button>
                   </div>
                 </div>
-                <p className="text-xs font-body-md text-grass-green">Sixers opted to bat. Innings break soon.</p>
               </div>
+            </section>
 
-              {/* Side Card 2 (Quick Insights) */}
-              <div onClick={() => openAuth('login')} className="md:col-span-4 rounded-xl border border-stadium-grey bg-pitch-dark p-md flex flex-col justify-center items-center text-center cursor-pointer group hover:bg-stadium-grey transition-all">
-                <div className="w-12 h-12 rounded-full bg-grass-green/10 flex items-center justify-center mb-sm">
-                  <span className="material-symbols-outlined text-grass-green">analytics</span>
+            {/* Dynamic Content Section: Features */}
+            <section className="py-xl max-w-container-max mx-auto px-md">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-xl">
+                <div className="flex flex-col gap-sm">
+                  <span className="material-symbols-outlined text-grass-green text-3xl">smart_toy</span>
+                  <h3 className="font-headline-md text-lg">Precision AI</h3>
+                  <p className="text-text-muted font-body-md text-sm">Natural language queries yield instant, data-verified results from our proprietary cricket database spanning 150 years.</p>
                 </div>
-                <h4 className="font-headline-md text-md mb-xs">CrickAlt Insight</h4>
-                <p className="text-on-surface-variant text-sm mb-md">India has a <span className="text-grass-green font-bold">88%</span> win probability based on the current run rate and pitch deterioration.</p>
-                <button className="text-grass-green font-label-caps text-[11px] flex items-center gap-xs group-hover:underline">SEE FULL REPORT <span className="material-symbols-outlined text-[14px]">open_in_new</span></button>
+                <div className="flex flex-col gap-sm">
+                  <span className="material-symbols-outlined text-trophy-gold text-3xl">query_stats</span>
+                  <h3 className="font-headline-md text-lg">Predictive Modeling</h3>
+                  <p className="text-text-muted font-body-md text-sm">Advanced ML models provide real-time probability shifts as every ball is bowled, factoring in weather and player form.</p>
+                </div>
+                <div className="flex flex-col gap-sm">
+                  <span className="material-symbols-outlined text-primary text-3xl">shield</span>
+                  <h3 className="font-headline-md text-lg">Verified Precision</h3>
+                  <p className="text-text-muted font-body-md text-sm">Our data is triple-checked against official broadcast feeds to ensure you get the absolute truth in every statistic.</p>
+                </div>
               </div>
-
-              {/* Side Card 3 (Recent News) */}
-              <div onClick={() => openAuth('login')} className="md:col-span-4 rounded-xl border border-stadium-grey bg-surface-container-low p-md flex gap-md overflow-hidden hover:border-outline-variant transition-colors cursor-pointer group">
-                <div className="w-24 shrink-0 rounded-lg overflow-hidden h-full bg-surface-container-high">
-                  <img className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="cricketer hit" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCcl1oUMo9iVy1J8U3wZL3IqFW5GHAnGeNSgTDKnjhvuwviQmCxTNl7R2iHoKx7G_8GCRAxk5-OobUv5c-EyMzmHfhLIwlxsFH-PktUsGSkX4sSxprF5fcrGa895mxtcBks5IUR9cffC3hP3zDiGvbAgypry1fuWZK27aziRnMakJFeOvV-0w4Yzp09kKjxgQsZCKaS1UVSRbYl4R49i8-Lave3evj-LwUYZTACQCKrnvsZNe3jBRstlMKfZfh2-Czz8N8RXoSRr1o"/>
-                </div>
-                <div className="flex flex-col justify-center">
-                  <span className="text-[10px] font-label-caps text-grass-green uppercase mb-xs">Transfer News</span>
-                  <h5 className="font-headline-md text-sm leading-tight">Star player traded to Mumbai Indians for record fee.</h5>
-                </div>
-              </div>
-
-              {/* Side Card 4 (Stats CTA) */}
-              <div onClick={() => openAuth('login')} className="md:col-span-4 rounded-xl border border-trophy-gold/20 bg-gradient-to-br from-stadium-grey to-pitch-dark p-md flex flex-col justify-between group hover:border-trophy-gold/50 cursor-pointer transition-all">
-                <div>
-                  <span className="text-trophy-gold material-symbols-outlined mb-sm" style={{ fontVariationSettings: "'FILL' 1" }}>stars</span>
-                  <h4 className="font-headline-md text-md">Compare All-Time Greats</h4>
-                  <p className="text-text-muted text-xs mt-xs">Deep dive into player career metrics with our advanced AI visualization engine.</p>
-                </div>
-                <button className="mt-md w-full py-xs bg-surface-variant rounded-lg text-xs font-bold text-on-surface hover:bg-grass-green hover:text-pitch-dark transition-colors">START COMPARISON</button>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Dynamic Content Section: Features */}
-        <section className="py-xl max-w-container-max mx-auto px-md">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-xl">
-            <div className="flex flex-col gap-sm">
-              <span className="material-symbols-outlined text-grass-green text-3xl">smart_toy</span>
-              <h3 className="font-headline-md text-lg">Precision AI</h3>
-              <p className="text-text-muted font-body-md text-sm">Natural language queries yield instant, data-verified results from our proprietary cricket database spanning 150 years.</p>
-            </div>
-            <div className="flex flex-col gap-sm">
-              <span className="material-symbols-outlined text-trophy-gold text-3xl">query_stats</span>
-              <h3 className="font-headline-md text-lg">Predictive Modeling</h3>
-              <p className="text-text-muted font-body-md text-sm">Advanced ML models provide real-time probability shifts as every ball is bowled, factoring in weather and player form.</p>
-            </div>
-            <div className="flex flex-col gap-sm">
-              <span className="material-symbols-outlined text-primary text-3xl">shield</span>
-              <h3 className="font-headline-md text-lg">Verified Precision</h3>
-              <p className="text-text-muted font-body-md text-sm">Our data is triple-checked against official broadcast feeds to ensure you get the absolute truth in every statistic.</p>
-            </div>
-          </div>
-        </section>
+            </section>
+          </>
+        )}
       </main>
 
       {/* Footer */}
