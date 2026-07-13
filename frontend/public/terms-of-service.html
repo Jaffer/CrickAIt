@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terms of Service - CrickAlt</title>
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --surface-color: #111827;
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --accent-color: #12a480;
+            --border-color: #1f2937;
+        }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            line-height: 1.7;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 40px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 20px;
+        }
+        .header img {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+        }
+        .header h1 {
+            font-family: 'Sora', sans-serif;
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--accent-color);
+            margin: 0;
+        }
+        h2 {
+            font-family: 'Sora', sans-serif;
+            color: var(--text-primary);
+            font-size: 20px;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+        }
+        h3 {
+            font-family: 'Sora', sans-serif;
+            color: var(--accent-color);
+            font-size: 16px;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        p, li {
+            color: var(--text-secondary);
+            font-size: 15px;
+        }
+        ul {
+            padding-left: 20px;
+            margin-bottom: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        strong {
+            color: var(--text-primary);
+        }
+        .last-updated {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 30px;
+            font-style: italic;
+        }
+        hr {
+            border: 0;
+            height: 1px;
+            background: var(--border-color);
+            margin: 30px 0;
+        }
+        .footer {
+            margin-top: 50px;
+            text-align: center;
+            font-size: 13px;
+            color: var(--text-secondary);
+            border-top: 1px solid var(--border-color);
+            padding-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="/favicon.png" alt="CrickAlt Logo">
+            <h1>CrickAlt</h1>
+        </div>
+
+        <h1>Terms of Service</h1>
+        <div class="last-updated">Last Updated: July 13, 2026</div>
+
+        <p>These User Terms / Agreement ("Terms", "Agreement") constitute a legally binding agreement made between you ("you", "user") and CrickAlt ("we", "our", "us") concerning your access to and use of the CrickAlt web application, AI Chatbot Assistant, and live statistic scoreboards.</p>
+        <p>By creating an account, checking the agreement checkbox during signup, or using any part of the service, you agree that you have read, understood, and agreed to be bound by all of these Terms.</p>
+
+        <hr>
+
+        <h2>1. User Account Registration</h2>
+        <ul>
+            <li><strong>Eligibility</strong>: You must be at least 13 years of age to register for an account.</li>
+            <li><strong>Accuracy of Data</strong>: You must provide accurate, current, and complete details (username, email, password) during registration.</li>
+            <li><strong>Credentials Security</strong>: You are responsible for keeping your login credentials confidential.</li>
+        </ul>
+
+        <hr>
+
+        <h2>2. Acceptable Use Policy</h2>
+        <p>You agree not to use the service for any purpose that is prohibited by these Terms. You are responsible for all of your activity in connection with the service. You shall not:</p>
+        <ul>
+            <li>Attempt to scrape, duplicate, or reverse-engineer our proprietary database schemas or LangGraph AI multi-agent logic.</li>
+            <li>Use any script, automation, or software bots to query our FastAPI backend or submit chat inputs.</li>
+            <li>Circumvent rate-limiting headers, SQLite session namespaces, or Cloudflare Turnstile CAPTCHA protection mechanisms.</li>
+        </ul>
+
+        <hr>
+
+        <h2>3. Service Limits & Subscriptions</h2>
+        <p>CrickAlt limits chat usage to ensure platform stability and protect external cricket feed APIs:</p>
+        <ol>
+            <li><strong>Free Tier</strong>: 100 AI chatbot queries per day.</li>
+            <li><strong>Guest Tier</strong>: 20 AI chatbot queries per day.</li>
+            <li><strong>Pro Tier</strong>: Unlimited queries subject to our fair use terms.</li>
+        </ol>
+        <p>We reserve the right to block access or terminate accounts that show suspicious traffic spikes or rate limit violations.</p>
+
+        <hr>
+
+        <h2>4. AI-Generated Output Disclaimer</h2>
+        <p>All statistical insights, match summaries, and win probability calculations generated by the multi-agent chatbot are produced via LLMs based on historical and current public cricket data feeds.</p>
+        <ul>
+            <li><strong>No Betting Advice</strong>: CrickAlt does not provide official sports betting, financial, or legal advice.</li>
+            <li><strong>No Accuracy Guarantees</strong>: AI-generated responses may contain hallucinations or outdated statistics. CrickAlt is not liable for decisions made based on AI output.</li>
+        </ul>
+
+        <hr>
+
+        <h2>5. Intellectual Property</h2>
+        <p>The CrickAlt web application, including its frontend interface, styling, backend python scripts, logos, and visualizations, is our proprietary property. Your account allows you a limited, non-exclusive license to use the application.</p>
+
+        <hr>
+
+        <h2>6. Limitation of Liability</h2>
+        <p>IN NO EVENT SHALL CRICKALT, ITS DEVELOPERS, OR AGENTS BE LIABLE FOR ANY DIRECT, INDIRECT, PUNITIVE, SPECIAL, OR CONSEQUENTIAL DAMAGES ARISING OUT OF THE USE OR INABILITY TO USE THIS APPLICATION.</p>
+
+        <hr>
+
+        <h2>7. Contact Us</h2>
+        <p>If you have questions regarding these Terms, contact us at: <strong>support@crickait.com</strong></p>
+
+        <div class="footer">
+            &copy; 2026 CrickAlt. All rights reserved.
+        </div>
+    </div>
+</body>
+</html>
