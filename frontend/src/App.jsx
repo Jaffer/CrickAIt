@@ -40,6 +40,7 @@ function App() {
       root.style.setProperty('--text-muted', '#a0aab2');
       root.style.setProperty('--border-val', 'rgba(255, 255, 255, 0.08)');
       root.style.setProperty('--glass-bg', 'rgba(19, 44, 29, 0.6)');
+      root.style.setProperty('--input-bg-val', 'rgba(5, 15, 10, 0.6)');
     } else if (savedTheme === 'light') {
       root.style.setProperty('--bg-color', '#f5f7fa');
       root.style.setProperty('--surface', '#ffffff');
@@ -49,6 +50,7 @@ function App() {
       root.style.setProperty('--accent', '#00b894');
       root.style.setProperty('--border-val', 'rgba(0, 0, 0, 0.08)');
       root.style.setProperty('--glass-bg', 'rgba(255, 255, 255, 0.6)');
+      root.style.setProperty('--input-bg-val', '#ffffff');
     } else {
       // Default Dark
       root.style.setProperty('--bg-color', '#0f1115');
@@ -59,6 +61,7 @@ function App() {
       root.style.setProperty('--accent', '#10a37f');
       root.style.setProperty('--border-val', 'rgba(255, 255, 255, 0.08)');
       root.style.setProperty('--glass-bg', 'rgba(26, 29, 36, 0.6)');
+      root.style.setProperty('--input-bg-val', 'rgba(12, 14, 18, 0.6)');
     }
 
     const handleAuthExpired = () => handleLogout();

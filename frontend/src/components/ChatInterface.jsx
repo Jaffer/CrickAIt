@@ -77,7 +77,8 @@ export default function ChatInterface({
 
     try {
       const localDate = getLocalDateString();
-      const res = await authenticatedFetch(`/ask?user_prompt=${encodeURIComponent(textToSend)}&session_id=${sid}&local_date=${localDate}`, {
+      const userLang = localStorage.getItem('crickait_lang') || 'English (UK)';
+      const res = await authenticatedFetch(`/ask?user_prompt=${encodeURIComponent(textToSend)}&session_id=${sid}&local_date=${localDate}&lang=${encodeURIComponent(userLang)}`, {
         method: 'POST'
       });
 

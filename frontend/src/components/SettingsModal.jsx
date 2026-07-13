@@ -1,6 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
 import { authenticatedFetch } from '../services/api';
 
+const LANGUAGES = [
+  'English (UK)',
+  'Hindi (हिन्दी)',
+  'Telugu (తెలుగు)',
+  'Tamil (தமிழ்)',
+  'Bengali (বাংলা)',
+  'Kannada (ಕನ್ನಡ)',
+  'Spanish (Español)',
+  'French (Français)',
+  'German (Deutsch)',
+  'Australian English',
+  'Urdu (اردو)',
+  'Marathi (मराठी)'
+];
+
 export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, onLogout, initialTab = 'profile', isInline = false }) {
   const [activeTab, setActiveTab] = useState(initialTab);
   
@@ -34,10 +49,25 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
   const [pushNotifications, setPushNotifications] = useState(localStorage.getItem('crickait_push') === 'true');
   const [language, setLanguage] = useState(localStorage.getItem('crickait_lang') || 'English (UK)');
 
+  // Searchable language dropdown states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
+  const langDropdownRef = useRef(null);
+
   useEffect(() => {
     fetchProfile();
     loadSessionsCount();
     loadPersonalization();
+  }, []);
+
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (langDropdownRef.current && !langDropdownRef.current.contains(e.target)) {
+        setIsLangDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
 
   const fetchProfile = async () => {
@@ -148,6 +178,7 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
       root.style.setProperty('--text-muted', '#a0aab2');
       root.style.setProperty('--border-val', 'rgba(255, 255, 255, 0.08)');
       root.style.setProperty('--glass-bg', 'rgba(19, 44, 29, 0.6)');
+      root.style.setProperty('--input-bg-val', 'rgba(5, 15, 10, 0.6)');
     } else if (themeValue === 'light') {
       root.style.setProperty('--bg-color', '#f5f7fa');
       root.style.setProperty('--surface', '#ffffff');
@@ -157,6 +188,7 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
       root.style.setProperty('--accent', '#00b894');
       root.style.setProperty('--border-val', 'rgba(0, 0, 0, 0.08)');
       root.style.setProperty('--glass-bg', 'rgba(255, 255, 255, 0.6)');
+      root.style.setProperty('--input-bg-val', '#ffffff');
     } else {
       // Default Dark
       root.style.setProperty('--bg-color', '#0f1115');
@@ -167,6 +199,7 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
       root.style.setProperty('--accent', '#10a37f');
       root.style.setProperty('--border-val', 'rgba(255, 255, 255, 0.08)');
       root.style.setProperty('--glass-bg', 'rgba(26, 29, 36, 0.6)');
+      root.style.setProperty('--input-bg-val', 'rgba(12, 14, 18, 0.6)');
     }
     localStorage.setItem('crickait_theme', themeValue);
   };
@@ -656,15 +689,72 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
                         <p className="text-xs text-text-muted">Select your preferred localized interface language.</p>
                       </div>
                     </div>
-                    <select 
-                      value={language}
-                      onChange={(e) => setLanguage(e.target.value)}
-                      className="bg-surface-container border border-outline-variant/30 text-on-surface text-xs rounded-lg pl-3 pr-8 py-1.5 focus:ring-grass-green"
-                    >
-                      <option>English (UK)</option>
-                      <option>Hindi</option>
-                      <option>Australian English</option>
-                    </select>
+                    
+                    {/* Custom Searchable Dropdown */}
+                    <div className="relative" ref={langDropdownRef}>
+                      <button
+                        type="button"
+                        onClick={() => setIsLangDropdownOpen(!isLangDropdownOpen)}
+                        className="bg-surface-container border border-outline-variant/30 text-on-surface text-xs rounded-lg pl-3 pr-8 py-1.5 focus:ring-grass-green flex items-center justify-between min-w-[140px] relative text-left"
+                      >
+                        <span>{language}</span>
+                        <span className="material-symbols-outlined absolute right-2 text-xs text-text-muted">expand_more</span>
+                      </button>
+
+                      {isLangDropdownOpen && (
+                        <div className="absolute right-0 bottom-full mb-1 w-56 bg-surface-container border border-outline-variant/30 rounded-xl shadow-2xl z-50 overflow-hidden p-xs flex flex-col gap-xs">
+                          <div className="relative flex items-center bg-surface-container-low/80 border border-outline-variant/10 rounded-lg px-2 py-1">
+                            <span className="material-symbols-outlined text-xs text-text-muted mr-1">search</span>
+                            <input
+                              type="text"
+                              placeholder="Search language..."
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              className="bg-transparent border-none outline-none text-xs text-on-surface w-full p-0 focus:ring-0"
+                            />
+                            {searchQuery && (
+                              <button
+                                type="button"
+                                onClick={() => setSearchQuery('')}
+                                className="text-text-muted hover:text-on-surface text-[10px] font-bold"
+                              >
+                                &times;
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="max-h-40 overflow-y-auto divide-y divide-outline-variant/5">
+                            {(() => {
+                              const filtered = LANGUAGES.filter(l => 
+                                l.toLowerCase().includes(searchQuery.toLowerCase())
+                              );
+                              if (filtered.length === 0) {
+                                return <div className="p-2 text-center text-[10px] text-text-muted">No languages found</div>;
+                              }
+                              return filtered.map(l => (
+                                <button
+                                  key={l}
+                                  type="button"
+                                  onClick={() => {
+                                    setLanguage(l);
+                                    localStorage.setItem('crickait_lang', l);
+                                    setIsLangDropdownOpen(false);
+                                    setSearchQuery('');
+                                  }}
+                                  className={`w-full text-left px-sm py-1.5 text-xs rounded-lg transition-colors ${
+                                    language === l 
+                                      ? 'bg-grass-green/20 text-grass-green font-bold' 
+                                      : 'text-on-surface hover:bg-surface-container-high'
+                                  }`}
+                                >
+                                  {l}
+                                </button>
+                              ));
+                            })()}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

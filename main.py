@@ -404,6 +404,7 @@ class AgentState(MessagesState):
     summary: str
     retry_count: Annotated[int, operator.add]
     user_profile: Annotated[dict, operator.ior]
+    preferred_lang: str
 
 
 async def profile_extractor_node(state: AgentState, config = None):
@@ -492,6 +493,7 @@ async def router_node(state: AgentState):
         return {"route_decision": "EXPERT"}
     else:
         memory_str = json.dumps(profile)
+        preferred_lang = state.get("preferred_lang", "English (UK)")
         system_instruction = f"""
         You are a friendly cricket bot. Keep it brief.
         Here is the user's saved memory: {memory_str}.
@@ -499,6 +501,8 @@ async def router_node(state: AgentState):
         If memory shows acronym like 'CSK' or 'RCB', they are IPL teams.
         If empty, politely tell them they haven't saved any yet.
         STRICT DOMAIN LOCK: ONLY answer questions about the cricket industry, cricket boards, rules, or players. Decline all other topics.
+        
+        CRITICAL: The user's preferred language is {preferred_lang}. You MUST respond entirely in {preferred_lang}.
         """
         fast_answer = await fast_router_llm.ainvoke(
             [SystemMessage(content=system_instruction)] + state["messages"]
@@ -521,8 +525,11 @@ async def summarizer_node(state: AgentState):
 async def expert_node(state: AgentState):
     profile = state.get("user_profile", {})
     current_retries = state.get("retry_count", 0)
+    preferred_lang = state.get("preferred_lang", "English (UK)")
 
     custom_prompt = STRICT_SYSTEM_PROMPT + f"\nUSER PROFILE: {profile}"
+    custom_prompt += f"\n\nCRITICAL: The user's preferred language is {preferred_lang}. You MUST respond entirely in {preferred_lang}."
+    
     if current_retries >= 1:
         custom_prompt += (
             "\n\nCRITICAL: You have the search data. Answer the question "
@@ -1274,11 +1281,14 @@ async def list_sessions(username: str = Depends(get_current_user)):
 
 
 @app.post("/ask")
-async def ask(user_prompt: str, session_id: Optional[str] = None, local_date: Optional[str] = None, username: str = Depends(get_current_user)):
+async def ask(user_prompt: str, session_id: Optional[str] = None, local_date: Optional[str] = None, lang: Optional[str] = "English (UK)", username: str = Depends(get_current_user)):
     sid = session_id or str(uuid.uuid4())
     scoped_sid = f"{username}:{sid}"
     
     try:
+        # Use the resolved parameter (default to English (UK) if empty)
+        resolved_lang = lang if lang else "English (UK)"
+
         async with aiosqlite.connect("checkpoints.db") as conn:
             async with conn.execute("SELECT plan FROM users WHERE username = ?", (username,)) as c:
                 row = await c.fetchone()
@@ -1309,7 +1319,10 @@ async def ask(user_prompt: str, session_id: Optional[str] = None, local_date: Op
                 }
 
         result = await agent.ainvoke(
-            {"messages": [HumanMessage(content=user_prompt)]},
+            {
+                "messages": [HumanMessage(content=user_prompt)],
+                "preferred_lang": resolved_lang
+            },
             {"configurable": {"thread_id": scoped_sid}}
         )
         final_message = result["messages"][-1]

@@ -9,7 +9,7 @@
     --accent-hover: #0e8c6c;
     --user-msg-bg: rgba(255, 255, 255, 0.05);
     --bot-msg-bg: rgba(26, 29, 36, 0.6);
-    --input-bg: rgba(12, 14, 18, 0.6);
+    --input-bg: var(--input-bg-val, rgba(12, 14, 18, 0.6));
     --surface-glass: var(--glass-bg, rgba(26, 29, 36, 0.6));
     --font-display: 'Sora', sans-serif;
     --font-body: 'Inter', sans-serif;
