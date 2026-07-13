@@ -140,6 +140,13 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
 
     let initialized = false;
 
+    // Reset Google One Tap cooldown by deleting the g_state cookie
+    try {
+      document.cookie = "g_state=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+    } catch (e) {
+      console.warn("Failed to clear g_state cookie:", e);
+    }
+
     const initGoogleOneTap = () => {
       if (!window.google?.accounts?.id || initialized) return;
 
