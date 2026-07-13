@@ -180,19 +180,25 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
     return () => clearInterval(interval);
   }, [isModalOpen]);
 
-  // Handle Google OAuth redirect callback inside popup window
+  // Handle Google OAuth redirect callback (for both popup window and full-page redirect)
   useEffect(() => {
-    if (window.opener && window.location.hash.includes("id_token=")) {
+    if (window.location.hash.includes("id_token=")) {
       try {
         const hash = window.location.hash.substring(1);
         const params = new URLSearchParams(hash);
         const idToken = params.get("id_token");
         if (idToken) {
-          window.opener.postMessage({ type: "GOOGLE_OAUTH_TOKEN", credential: idToken }, window.location.origin);
-          window.close();
+          if (window.opener) {
+            window.opener.postMessage({ type: "GOOGLE_OAUTH_TOKEN", credential: idToken }, window.location.origin);
+            window.close();
+          } else {
+            handleGoogleCredentialResponse({ credential: idToken });
+            // Clean up the URL hash so it doesn't run again on reload
+            window.history.replaceState(null, null, window.location.pathname);
+          }
         }
       } catch (err) {
-        console.error("Error in Google OAuth popup callback:", err);
+        console.error("Error in Google OAuth redirect callback:", err);
       }
     }
   }, []);
@@ -218,8 +224,12 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
     
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=${responseType}&scope=${encodeURIComponent(scope)}&nonce=${nonce}`;
     
-    // Open popup window (synchronously triggered inside click handler to bypass popup blockers!)
-    window.open(authUrl, "GoogleSignIn", "width=500,height=600,left=100,top=100");
+    const popup = window.open(authUrl, "GoogleSignIn", "width=500,height=600,left=100,top=100");
+    
+    // If popup is blocked by the browser, fallback to a full-page redirect immediately
+    if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+      window.location.href = authUrl;
+    }
   };
 
   const handleGoogleCredentialResponse = async (response) => {
