@@ -5,9 +5,6 @@ import Sidebar from './components/Sidebar';
 import ChatInterface from './components/ChatInterface';
 import NewsTicker from './components/NewsTicker';
 import UserProfilePopover from './components/UserProfilePopover';
-import ProfileModal from './components/ProfileModal';
-import UpgradeModal from './components/UpgradeModal';
-import PersonalizationModal from './components/PersonalizationModal';
 import SettingsModal from './components/SettingsModal';
 import HelpModal from './components/HelpModal';
 import BugReportModal from './components/BugReportModal';
@@ -210,29 +207,13 @@ function App() {
       </div>
 
       {/* Modals */}
-      {activeModal === 'profile' && (
-        <ProfileModal
-          onClose={() => setActiveModal(null)}
-          onLogout={handleLogout}
-        />
-      )}
-
-      {activeModal === 'upgrade' && (
-        <UpgradeModal
-          onClose={() => setActiveModal(null)}
-          onShowAlert={showSimpleAlert}
-        />
-      )}
-
-      {activeModal === 'personalization' && (
-        <PersonalizationModal
-          onClose={() => setActiveModal(null)}
-          onShowAlert={showSimpleAlert}
-        />
-      )}
-
-      {activeModal === 'settings' && (
+      {(activeModal === 'profile' || activeModal === 'upgrade' || activeModal === 'personalization' || activeModal === 'settings') && (
         <SettingsModal
+          initialTab={
+            activeModal === 'profile' ? 'profile' :
+            activeModal === 'upgrade' ? 'subscription' :
+            activeModal === 'personalization' ? 'preferences' : 'preferences'
+          }
           onClose={() => setActiveModal(null)}
           onShowAlert={showSimpleAlert}
           onConfirmAlert={showConfirmAlert}
