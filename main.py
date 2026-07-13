@@ -1601,7 +1601,95 @@ async def fetch_live_scores_from_cricbuzz():
         logger.error("Error scraping live scores from Cricbuzz: %s", e, exc_info=True)
         return []
 
-@app.get("/live-scores")
+@app.get("/live-scores-preview")
+async def get_scores_preview():
+    now = time.time()
+    if live_scores_cache["data"] is not None and (now - live_scores_cache["time"] < 90):
+        return {"matches": live_scores_cache["data"]}
+
+    live_matches = []
+    cricapi_failed = False
+    
+    try:
+        url = f"https://api.cricapi.com/v1/currentMatches?apikey={CRICKET_API_KEY}&offset=0"
+        client = get_http_client()
+        r = await client.get(url, timeout=8.0)
+        data = r.json()
+        
+        if data.get("status") == "success":
+            for match in data.get("data", []):
+                if match.get("matchEnded", False):
+                    continue
+
+                scores = []
+                for s in match.get("score", []):
+                    scores.append({
+                        "inning": s.get("inning", "Score"),
+                        "r": s.get("r", 0),
+                        "w": s.get("w", 0),
+                        "o": s.get("o", 0)
+                    })
+                
+                live_matches.append({
+                    "id": match.get("id"),
+                    "name": match.get("name"),
+                    "status": match.get("status"),
+                    "teams": match.get("teams", []),
+                    "teamInfo": match.get("teamInfo", []),
+                    "score": scores
+                })
+        else:
+            cricapi_failed = True
+    except Exception as e:
+        logger.error("Live matches CricAPI error (preview): %s", e)
+        cricapi_failed = True
+
+    if cricapi_failed or not live_matches:
+        scraped_matches = await fetch_live_scores_from_cricbuzz()
+        if scraped_matches:
+            live_matches = scraped_matches
+
+    if not live_matches and live_scores_cache["data"] is not None:
+        return {"matches": live_scores_cache["data"]}
+
+    live_scores_cache["data"] = live_matches
+    live_scores_cache["time"] = now
+
+    return {"matches": live_matches}
+
+
+@app.get("/news-preview")
+async def get_news_preview():
+    try:
+        client = get_http_client()
+        r = await client.get("https://www.cricbuzz.com/rss.xml", timeout=6.0)
+        xml = r.text
+        import re
+        items = re.findall(r"<item>(.*?)</item>", xml, re.DOTALL)
+        news_list = []
+        for item in items[:5]:
+            title = re.search(r"<title>(.*?)</title>", item)
+            desc = re.search(r"<description>(.*?)</description>", item)
+            link = re.search(r"<link>(.*?)</link>", item)
+            
+            title_text = title.group(1).replace("<![CDATA[", "").replace("]]>", "").strip() if title else ""
+            desc_text = desc.group(1).replace("<![CDATA[", "").replace("]]>", "").strip() if desc else ""
+            link_text = link.group(1).strip() if link else ""
+            
+            desc_text = re.sub(r"<[^>]*>", "", desc_text)
+            
+            news_list.append({
+                "title": title_text,
+                "description": desc_text,
+                "link": link_text
+            })
+        return {"news": news_list}
+    except Exception as e:
+        logger.error("Error fetching news preview: %s", e)
+        return {"news": [
+            {"title": "IPL matches heating up as playoff race intensifies", "description": "Teams battle for the crucial top 4 spots in the table.", "link": "#"},
+            {"title": "Fast bowlers dominate in latest red-ball fixtures", "description": "Pace friendly tracks result in early finishes across venues.", "link": "#"}
+        ]}
 async def get_scores(username: str = Depends(get_current_user)):
     if username.startswith('guest_'):
         raise HTTPException(
