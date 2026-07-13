@@ -12,13 +12,13 @@ function getBrowserFingerprint() {
     ctx.font = "14px 'Arial'";
     ctx.textBaseline = "alphabetic";
     ctx.fillStyle = "#f60";
-    ctx.fillRect(125,1,62,20);
+    ctx.fillRect(125, 1, 62, 20);
     ctx.fillStyle = "#069";
     ctx.fillText("CrickAIt Fingerprint", 2, 15);
     ctx.fillStyle = "rgba(102, 204, 0, 0.7)";
     ctx.fillText("CrickAIt Fingerprint", 4, 17);
     const canvasData = canvas.toDataURL();
-    
+
     let hash = 0;
     const inputs = [
       canvasData,
@@ -28,7 +28,7 @@ function getBrowserFingerprint() {
       screen.width + 'x' + screen.height,
       new Date().getTimezoneOffset()
     ].join('###');
-    
+
     for (let i = 0; i < inputs.length; i++) {
       const char = inputs.charCodeAt(i);
       hash = ((hash << 5) - hash) + char;
@@ -55,7 +55,7 @@ const getTeamFlag = (teamName) => {
   if (name.includes("pakistan") || name.includes("pak")) return "https://flagcdn.com/w80/pk.png";
   if (name.includes("new zealand") || name.includes("nz")) return "https://flagcdn.com/w80/nz.png";
   if (name.includes("sri lanka") || name.includes("sl")) return "https://flagcdn.com/w80/lk.png";
-  if (name.includes("west indies") || name.includes("wi")) return "https://flagcdn.com/w80/jm.png"; 
+  if (name.includes("west indies") || name.includes("wi")) return "https://flagcdn.com/w80/jm.png";
   if (name.includes("bangladesh") || name.includes("ban")) return "https://flagcdn.com/w80/bd.png";
   if (name.includes("afghanistan") || name.includes("afg")) return "https://flagcdn.com/w80/af.png";
   if (name.includes("zimbabwe") || name.includes("zim")) return "https://flagcdn.com/w80/zw.png";
@@ -78,7 +78,7 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
       setIsModalOpen(true);
     }
   }, [initialMode]);
-  
+
   // Auth Form State
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -146,7 +146,7 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
 
       try {
         window.google.accounts.id.initialize({
-          client_id: "895472652408-9tp4qlkqnpb6ufvo61ipsoaet2d0lmai.apps.googleusercontent.com",
+          client_id: "895472652408-5vah6nfpd1nef0p5tk86cvmqj29g5mvu.apps.googleusercontent.com",
           callback: (response) => callbackRef.current(response),
           auto_select: false,
           cancel_on_tap_outside: true,
@@ -200,10 +200,10 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
       const payloadBase64Url = response.credential.split('.')[1];
       let payloadBase64 = payloadBase64Url.replace(/-/g, '+').replace(/_/g, '/');
       while (payloadBase64.length % 4) {
-          payloadBase64 += '=';
+        payloadBase64 += '=';
       }
       const payloadJson = decodeURIComponent(atob(payloadBase64).split('').map(function (c) {
-          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
       }).join(''));
       const payload = JSON.parse(payloadJson);
 
@@ -211,8 +211,8 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            email: payload.email,
-            display_name: payload.name || payload.email.split('@')[0]
+          email: payload.email,
+          display_name: payload.name || payload.email.split('@')[0]
         })
       });
 
@@ -286,9 +286,9 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
     }
 
     const endpoint = modalMode === 'login' ? '/auth/login' : '/auth/register';
-    const payload = modalMode === 'login' 
-        ? { username: email, password, turnstile_token: token } 
-        : { username, email, password, turnstile_token: token };
+    const payload = modalMode === 'login'
+      ? { username: email, password, turnstile_token: token }
+      : { username, email, password, turnstile_token: token };
 
     try {
       const res = await fetch(`${API_URL}${endpoint}`, {
@@ -317,7 +317,7 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
   // Mock Chat Simulator
   const triggerMockChat = (text) => {
     if (!text.trim()) return;
-    
+
     // Add user bubble
     setMockMessages(prev => [...prev, { role: 'user', content: text }]);
     setChatInput('');
@@ -325,7 +325,7 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
     // Simulate search message
     setTimeout(() => {
       setMockMessages(prev => [
-        ...prev, 
+        ...prev,
         { role: 'assistant', content: `Searching our database for "${text}"...`, isSearching: true }
       ]);
 
@@ -367,7 +367,7 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
       <header className="docked full-width top-0 sticky z-50 bg-background/80 backdrop-blur-md border-b border-stadium-grey shadow-sm">
         <nav className="flex justify-between items-center w-full px-lg py-sm max-w-container-max mx-auto">
           <div className="flex items-center gap-sm">
-            <img alt="CrickAlt Logo" className="w-10 h-10 rounded-lg shadow-lg" src="/favicon.png"/>
+            <img alt="CrickAlt Logo" className="w-10 h-10 rounded-lg shadow-lg" src="/favicon.png" />
             <span className="text-headline-md font-headline-md font-extrabold text-grass-green dark:text-primary">CrickAlt</span>
           </div>
           <div className="hidden md:flex items-center gap-md">
@@ -379,9 +379,9 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
           <div className="flex items-center gap-sm">
             <div className="relative hidden md:block">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-on-surface-variant text-[18px]">search</span>
-              <input 
-                type="text" 
-                placeholder="Search matches..." 
+              <input
+                type="text"
+                placeholder="Search matches..."
                 className="bg-surface-container border border-outline-variant/30 rounded-full pl-9 pr-4 py-1.5 text-xs text-on-surface placeholder:text-on-surface-variant/50 focus:border-grass-green focus:ring-1 focus:ring-grass-green w-48 transition-all"
               />
             </div>
@@ -394,8 +394,8 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
       <main className="relative overflow-hidden">
         {showSettings ? (
           <div className="py-xl max-w-container-max mx-auto px-md min-h-[80vh] flex flex-col items-center justify-start">
-            <SettingsModal 
-              isInline={true} 
+            <SettingsModal
+              isInline={true}
               onClose={() => setShowSettings(false)}
               onShowAlert={(alertObj) => alert(alertObj.message)}
               onConfirmAlert={(confirmObj) => {
@@ -403,7 +403,7 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
                   confirmObj.onConfirm();
                 }
               }}
-              onLogout={() => {}}
+              onLogout={() => { }}
             />
           </div>
         ) : (
@@ -412,7 +412,7 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
             <section className="relative pt-xl pb-32 px-md max-w-container-max mx-auto min-h-[85vh] flex flex-col justify-center items-center">
               <div className="relative z-10 text-center mb-xl">
                 <h1 className="font-display-lg text-display-lg md:text-[64px] leading-tight mb-md tracking-tight">
-                  Cricket Insight <br/>
+                  Cricket Insight <br />
                   <span className="text-grass-green">Powered by Intelligence</span>
                 </h1>
                 <p className="text-text-muted font-body-lg text-body-lg max-w-2xl mx-auto">
@@ -451,9 +451,9 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
                 {/* Input Form */}
                 <div className="p-sm border-t border-stadium-grey bg-surface-container-lowest/50 backdrop-blur-md">
                   <form className="flex items-center gap-sm relative" onSubmit={handleChatSubmit}>
-                    <input 
-                      className="w-full bg-surface-container border-outline-variant focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-full px-md py-sm text-on-surface placeholder:text-on-surface-variant/50 pr-12 text-sm" 
-                      placeholder="Ask CrickAlt anything..." 
+                    <input
+                      className="w-full bg-surface-container border-outline-variant focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-full px-md py-sm text-on-surface placeholder:text-on-surface-variant/50 pr-12 text-sm"
+                      placeholder="Ask CrickAlt anything..."
                       type="text"
                       value={chatInput}
                       onChange={(e) => setChatInput(e.target.value)}
@@ -492,18 +492,18 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
                       const featured = liveMatches[0];
                       const team1 = featured.teams[0] || "Team A";
                       const team2 = featured.teams[1] || "Team B";
-                      
+
                       const getScoreText = (idx) => {
                         const s = featured.score && featured.score[idx];
                         if (!s || s.r === 0) return "Yet to bat";
                         return `${s.r}/${s.w} (${s.o} ov)`;
                       };
-                      
+
                       const score1 = getScoreText(0);
                       const score2 = getScoreText(1);
                       const flag1 = getTeamFlag(team1);
                       const flag2 = getTeamFlag(team2);
-                      
+
                       return (
                         <div onClick={() => openAuth('signup')} className="md:col-span-8 group relative overflow-hidden rounded-xl border-t-4 border-trophy-gold bg-stadium-grey shadow-xl p-lg cursor-pointer">
                           <div className="flex justify-between items-start mb-lg">
@@ -563,7 +563,7 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
                       const match2 = liveMatches[1];
                       const team1 = match2.teams[0] || "Team A";
                       const team2 = match2.teams[1] || "Team B";
-                      
+
                       const getScoreText = (idx) => {
                         const s = match2.score && match2.score[idx];
                         if (!s || s.r === 0) return "Yet to bat";
@@ -571,7 +571,7 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
                       };
                       const flag1 = getTeamFlag(team1);
                       const flag2 = getTeamFlag(team2);
-                      
+
                       return (
                         <div onClick={() => openAuth('signup')} className="md:col-span-4 rounded-xl border border-stadium-grey bg-surface-container-low p-md flex flex-col justify-between hover:border-grass-green/50 transition-colors cursor-pointer group">
                           <div className="flex justify-between items-start">
@@ -629,7 +629,7 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
                       const featured = liveMatches[0];
                       const team1 = featured.teams[0] || "Team A";
                       const team2 = featured.teams[1] || "Team B";
-                      
+
                       let hash = 0;
                       const strId = String(featured.id || "123");
                       for (let i = 0; i < strId.length; i++) {
@@ -637,7 +637,7 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
                       }
                       const winProb = Math.abs(hash % 36) + 55;
                       const favoredTeam = hash % 2 === 0 ? team1 : team2;
-                      
+
                       return (
                         <div onClick={() => openAuth('login')} className="md:col-span-4 rounded-xl border border-stadium-grey bg-pitch-dark p-md flex flex-col justify-center items-center text-center cursor-pointer group hover:bg-stadium-grey transition-all">
                           <div className="w-12 h-12 rounded-full bg-grass-green/10 flex items-center justify-center mb-sm">
@@ -670,9 +670,9 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
                     (() => {
                       const item = news[0];
                       return (
-                        <a 
-                          href={item.link} 
-                          target="_blank" 
+                        <a
+                          href={item.link}
+                          target="_blank"
                           rel="noreferrer"
                           onClick={(e) => {
                             if (item.link === "#" || !item.link) {
@@ -779,7 +779,7 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-md bg-pitch-dark/85 backdrop-blur-md animate-fade-in">
           <div className="relative w-full max-w-md bg-surface-container-low border border-stadium-grey rounded-2xl shadow-2xl p-lg flex flex-col animate-float-in">
             {/* Close Button */}
-            <button 
+            <button
               className="absolute top-4 right-4 text-text-muted hover:text-on-background text-2xl transition-colors font-semibold"
               onClick={() => setIsModalOpen(false)}
               aria-label="Close modal"
@@ -799,13 +799,13 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
 
             {/* Tabs */}
             <div className="flex border-b border-outline-variant/30 mb-md">
-              <button 
+              <button
                 onClick={() => setModalMode('login')}
                 className={`flex-1 pb-2 font-semibold text-sm transition-all border-b-2 ${modalMode === 'login' ? 'border-grass-green text-grass-green' : 'border-transparent text-text-muted'}`}
               >
                 Sign In
               </button>
-              <button 
+              <button
                 onClick={() => setModalMode('signup')}
                 className={`flex-1 pb-2 font-semibold text-sm transition-all border-b-2 ${modalMode === 'signup' ? 'border-grass-green text-grass-green' : 'border-transparent text-text-muted'}`}
               >
@@ -818,26 +818,26 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
               {modalMode === 'signup' && (
                 <div className="space-y-xs">
                   <label className="font-label-caps text-[10px] text-on-surface-variant uppercase ml-1 block">Username</label>
-                  <input 
-                    type="text" 
-                    value={username} 
-                    onChange={e => setUsername(e.target.value)} 
-                    required 
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={e => setUsername(e.target.value)}
+                    required
                     className="w-full bg-surface-container border border-outline-variant/30 focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-xl px-md py-3 text-on-surface placeholder:text-on-surface-variant/50 text-sm"
                     placeholder="Enter your username"
                   />
                 </div>
               )}
-              
+
               <div className="space-y-xs">
                 <label className="font-label-caps text-[10px] text-on-surface-variant uppercase ml-1 block">
                   {modalMode === 'login' ? 'Email or Username' : 'Email Address'}
                 </label>
-                <input 
-                  type="text" 
-                  value={email} 
-                  onChange={e => setEmail(e.target.value)} 
-                  required 
+                <input
+                  type="text"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  required
                   className="w-full bg-surface-container border border-outline-variant/30 focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-xl px-md py-3 text-on-surface placeholder:text-on-surface-variant/50 text-sm"
                   placeholder={modalMode === 'login' ? 'alex_richardson' : 'alex@example.com'}
                 />
@@ -845,28 +845,28 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
 
               <div className="space-y-xs">
                 <label className="font-label-caps text-[10px] text-on-surface-variant uppercase ml-1 block">Password</label>
-                <input 
-                  type="password" 
-                  value={password} 
-                  onChange={e => setPassword(e.target.value)} 
-                  required 
+                <input
+                  type="password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
                   className="w-full bg-surface-container border border-outline-variant/30 focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-xl px-md py-3 text-on-surface placeholder:text-on-surface-variant/50 text-sm"
                   placeholder="••••••••"
                 />
               </div>
 
               {/* Invisible Turnstile CAPTCHA */}
-              <div 
-                className="cf-turnstile" 
-                data-sitekey="0x4AAAAAAD09r1W2hg2_y0AO" 
+              <div
+                className="cf-turnstile"
+                data-sitekey="0x4AAAAAAD09r1W2hg2_y0AO"
                 data-size="invisible"
               ></div>
 
               {modalMode === 'signup' && (
                 <div className="flex items-start gap-xs text-xs text-on-surface-variant my-md select-none">
-                  <input 
-                    type="checkbox" 
-                    id="agree-checkbox" 
+                  <input
+                    type="checkbox"
+                    id="agree-checkbox"
                     checked={agreed}
                     onChange={(e) => setAgreed(e.target.checked)}
                     required
@@ -874,8 +874,8 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
                   />
                   <label htmlFor="agree-checkbox" className="cursor-pointer text-text-muted">
                     I agree to the{' '}
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       onClick={(e) => { e.stopPropagation(); setShowTerms(true); }}
                       className="text-grass-green hover:underline font-bold"
                     >
@@ -885,9 +885,9 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
                 </div>
               )}
 
-              <button 
-                type="submit" 
-                className="w-full py-3 bg-grass-green text-pitch-dark font-bold rounded-xl hover:shadow-[0_0_20px_rgba(16,163,127,0.4)] transition-all active:scale-95 text-sm" 
+              <button
+                type="submit"
+                className="w-full py-3 bg-grass-green text-pitch-dark font-bold rounded-xl hover:shadow-[0_0_20px_rgba(16,163,127,0.4)] transition-all active:scale-95 text-sm"
                 disabled={loading}
               >
                 {loading ? 'Processing...' : (modalMode === 'login' ? 'Sign In' : 'Sign Up')}
@@ -904,8 +904,8 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
             <div id="google-btn-container" className="flex justify-center mb-sm min-h-[40px]"></div>
 
             {/* Guest Action */}
-            <button 
-              type="button" 
+            <button
+              type="button"
               className="w-full py-3 bg-surface-variant hover:bg-surface-container-high text-on-surface font-semibold rounded-xl transition-all duration-150 text-sm"
               onClick={handleGuestLogin}
             >
@@ -917,8 +917,8 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
               {modalMode === 'login' ? (
                 <p>
                   Don't have an account?{' '}
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={() => setModalMode('signup')}
                     className="text-grass-green hover:underline font-bold"
                   >
@@ -928,8 +928,8 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
               ) : (
                 <p>
                   Already have an account?{' '}
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={() => setModalMode('login')}
                     className="text-grass-green hover:underline font-bold"
                   >
