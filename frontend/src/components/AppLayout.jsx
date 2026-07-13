@@ -51,7 +51,7 @@ export default function AppLayout({
             <img
               alt="CrickAlt Logo"
               className="w-10 h-10 rounded-lg shadow-lg"
-              src="https://lh3.googleusercontent.com/aida/AP1WRLuC3vapt2nUwAP6q0OYy0UblJug9EBTyzZYA-GVZAheyKUBEkrVo9vCDwnbJEwTieYhtKa1miq39NUf6gMjiZNDhfACadzXAYZ2YQh45s2F-_xBbCez0JfTH28tisjhLaVqIetPXsuxQfWEDt-TVPjrjcF8R2-Go_zHQG5Z_EmutEiHI1Y_Bz56f8YhNKlrijb-uKHozwlT9A4BkHqqIjaeAiZOxMWIeIl42ysCJIHMKTKRELU3kWXfUKc"
+              src="/favicon.png"
             />
             <span className="text-headline-md font-headline-md font-extrabold text-grass-green">CrickAlt</span>
           </div>

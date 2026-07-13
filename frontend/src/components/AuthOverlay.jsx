@@ -44,9 +44,17 @@ function getBrowserFingerprint() {
 }
 
 export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(initialMode === 'signup');
   const [modalMode, setModalMode] = useState(initialMode);
   const [showSettings, setShowSettings] = useState(false);
+
+  // Re-open modal whenever parent changes initialMode (e.g. clicking a CTA)
+  useEffect(() => {
+    if (initialMode === 'signup') {
+      setModalMode('signup');
+      setIsModalOpen(true);
+    }
+  }, [initialMode]);
   
   // Auth Form State
   const [username, setUsername] = useState('');
