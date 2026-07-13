@@ -609,10 +609,10 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
                       <div className="w-12 h-12 rounded-full bg-trophy-gold/10 flex items-center justify-center mb-sm text-trophy-gold">
                         <span className="material-symbols-outlined text-2xl">upcoming</span>
                       </div>
-                      <h4 className="font-headline-md text-md mb-xs font-semibold">Upcoming Schedule</h4>
-                      <p className="text-on-surface-variant text-xs mb-md max-w-[180px]">Check out upcoming international tours, test series and domestic T20 leagues.</p>
+                      <h4 className="font-headline-md text-md mb-xs font-semibold">AI Fixtures Search</h4>
+                      <p className="text-on-surface-variant text-xs mb-md max-w-[180px]">Ask the AI assistant for schedules of upcoming international tours, test series and domestic T20 leagues.</p>
                       <button className="text-grass-green font-label-caps text-[11px] flex items-center gap-xs group-hover:underline">
-                        VIEW CALENDAR <span className="material-symbols-outlined text-[14px]">chevron_right</span>
+                        ASK ASSISTANT <span className="material-symbols-outlined text-[14px]">chevron_right</span>
                       </button>
                     </div>
                   )}
@@ -648,13 +648,14 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
                       );
                     })()
                   ) : (
-                    <div onClick={() => openAuth('login')} className="md:col-span-4 rounded-xl border border-stadium-grey bg-pitch-dark p-md flex flex-col justify-center items-center text-center cursor-pointer group hover:bg-stadium-grey transition-all">
+                    <div className="md:col-span-4 rounded-xl border border-stadium-grey bg-pitch-dark p-md flex flex-col justify-center items-center text-center min-h-[300px]">
                       <div className="w-12 h-12 rounded-full bg-grass-green/10 flex items-center justify-center mb-sm">
                         <span className="material-symbols-outlined text-grass-green">analytics</span>
                       </div>
                       <h4 className="font-headline-md text-md mb-xs">CrickAlt Insight</h4>
-                      <p className="text-on-surface-variant text-sm mb-md">India has a <span className="text-grass-green font-bold">88%</span> win probability based on the current run rate and pitch deterioration.</p>
-                      <button className="text-grass-green font-label-caps text-[11px] flex items-center gap-xs group-hover:underline">SEE FULL REPORT <span className="material-symbols-outlined text-[14px]">open_in_new</span></button>
+                      <p className="text-on-surface-variant text-xs max-w-[180px]">
+                        Predictive win probability metrics are calculated dynamically during active live play.
+                      </p>
                     </div>
                   )}
 
@@ -686,25 +687,23 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
                       );
                     })()
                   ) : (
-                    <div onClick={() => openAuth('login')} className="md:col-span-4 rounded-xl border border-stadium-grey bg-surface-container-low p-md flex gap-md overflow-hidden hover:border-outline-variant transition-colors cursor-pointer group">
-                      <div className="w-24 shrink-0 rounded-lg overflow-hidden h-full bg-surface-container-high">
-                        <img className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="cricketer hit" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCcl1oUMo9iVy1J8U3wZL3IqFW5GHAnGeNSgTDKnjhvuwviQmCxTNl7R2iHoKx7G_8GCRAxk5-OobUv5c-EyMzmHfhLIwlxsFH-PktUsGSkX4sSxprF5fcrGa895mxtcBks5IUR9cffC3hP3zDiGvbAgypry1fuWZK27aziRnMakJFeOvV-0w4Yzp09kKjxgQsZCKaS1UVSRbYl4R49i8-Lave3evj-LwUYZTACQCKrnvsZNe3jBRstlMKfZfh2-Czz8N8RXoSRr1o"/>
+                    <div className="md:col-span-4 rounded-xl border border-stadium-grey bg-surface-container-low p-md flex flex-col justify-center items-center text-center min-h-[300px]">
+                      <div className="w-12 h-12 rounded-full bg-grass-green/10 flex items-center justify-center mb-sm text-grass-green">
+                        <span className="material-symbols-outlined text-2xl">newspaper</span>
                       </div>
-                      <div className="flex flex-col justify-center">
-                        <span className="text-[10px] font-label-caps text-grass-green uppercase mb-xs">Transfer News</span>
-                        <h5 className="font-headline-md text-sm leading-tight">Star player traded to Mumbai Indians for record fee.</h5>
-                      </div>
+                      <h5 className="font-headline-md text-md mb-xs font-semibold">Latest News</h5>
+                      <p className="text-on-surface-variant text-xs">No recent news articles are currently available.</p>
                     </div>
                   )}
 
                   {/* Side Card 4 (Stats CTA) */}
                   <div onClick={() => openAuth('login')} className="md:col-span-4 rounded-xl border border-trophy-gold/20 bg-gradient-to-br from-stadium-grey to-pitch-dark p-md flex flex-col justify-between group hover:border-trophy-gold/50 cursor-pointer transition-all">
                     <div>
-                      <span className="text-trophy-gold material-symbols-outlined mb-sm" style={{ fontVariationSettings: "'FILL' 1" }}>stars</span>
-                      <h4 className="font-headline-md text-md">Compare All-Time Greats</h4>
-                      <p className="text-text-muted text-xs mt-xs">Deep dive into player career metrics with our advanced AI visualization engine.</p>
+                      <span className="text-trophy-gold material-symbols-outlined mb-sm" style={{ fontVariationSettings: "'FILL' 1" }}>compare_arrows</span>
+                      <h4 className="font-headline-md text-md font-semibold">AI Player Comparison</h4>
+                      <p className="text-text-muted text-xs mt-xs">Query the AI assistant to compare career statistics, strike rates, and milestones between cricket legends.</p>
                     </div>
-                    <button className="mt-md w-full py-xs bg-surface-variant rounded-lg text-xs font-bold text-on-surface hover:bg-grass-green hover:text-pitch-dark transition-colors">START COMPARISON</button>
+                    <button className="mt-md w-full py-xs bg-surface-variant rounded-lg text-xs font-bold text-on-surface hover:bg-grass-green hover:text-pitch-dark transition-colors uppercase">Ask Assistant</button>
                   </div>
                 </div>
               </div>
