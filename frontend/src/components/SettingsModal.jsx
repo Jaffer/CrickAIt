@@ -5,13 +5,13 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
   const [activeTab, setActiveTab] = useState(initialTab);
   
   // Profile state
-  const [fullName, setFullName] = useState(localStorage.getItem('crickait_full_name') || 'Alex Richardson');
-  const [displayName, setDisplayName] = useState(localStorage.getItem('crickait_display_name') || 'Alex_Stats_24');
-  const [email, setEmail] = useState('alex@crickait.com');
+  const [fullName, setFullName] = useState(localStorage.getItem('crickait_full_name') || '');
+  const [displayName, setDisplayName] = useState(localStorage.getItem('crickait_display_name') || '');
+  const [email, setEmail] = useState('');
   const [provider, setProvider] = useState('local');
   const [plan, setPlan] = useState('free');
-  const [avatar, setAvatar] = useState(localStorage.getItem('crickait_avatar') || '/avatars/avatar_1.png');
-  const [bio, setBio] = useState(localStorage.getItem('crickait_bio') || 'Passionate cricket fan with a deep interest in data analytics and T20 strategy. Here for the precision stats and AI insights.');
+  const [avatar, setAvatar] = useState(localStorage.getItem('crickait_avatar') || null);
+  const [bio, setBio] = useState(localStorage.getItem('crickait_bio') || '');
   
   // Profile editing
   const [isEditingAvatar, setIsEditingAvatar] = useState(false);
@@ -54,8 +54,8 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
         setEmail(data.email);
         setPlan(data.plan || 'free');
         setProvider(data.email === 'guest@crickait.com' ? 'local' : (data.email.includes('gmail.com') ? 'Google' : 'local'));
-        setAvatar(data.avatar || '/avatars/avatar_1.png');
-        setNewAvatar(data.avatar || '/avatars/avatar_1.png');
+        setAvatar(data.avatar || null);
+        setNewAvatar(data.avatar || null);
       }
     } catch (e) {
       console.error('Failed to fetch profile info', e);
@@ -374,11 +374,14 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
                     </button>
                   </div>
                   <div className="text-center md:text-left">
-                    <h2 className="font-headline-lg text-headline-lg text-2xl font-bold">{fullName}</h2>
-                    <p className="text-text-muted font-body-md text-sm">Stat Enthusiast &amp; T20 Strategist</p>
+                    <h2 className="font-headline-lg text-headline-lg text-2xl font-bold">{fullName || displayName}</h2>
+                    {email && <p className="text-text-muted font-body-md text-sm">{email}</p>}
                     <div className="flex gap-xs mt-sm justify-center md:justify-start">
-                      <span className="px-3 py-1 bg-surface-container-highest rounded-full text-[10px] font-label-caps uppercase text-on-surface-variant">Level 12 Fan</span>
-                      <span className="px-3 py-1 bg-surface-container-highest rounded-full text-[10px] font-label-caps uppercase text-on-surface-variant">Verified</span>
+                      <span className={`px-3 py-1 rounded-full text-[10px] font-label-caps uppercase ${
+                        plan === 'pro' ? 'bg-trophy-gold/10 text-trophy-gold border border-trophy-gold/30' :
+                        plan === 'guest' ? 'bg-surface-container-highest text-on-surface-variant' :
+                        'bg-grass-green/10 text-grass-green border border-grass-green/30'
+                      }`}>{plan === 'pro' ? 'Pro Member' : plan === 'guest' ? 'Guest' : 'Free Plan'}</span>
                     </div>
                   </div>
                 </div>
@@ -853,29 +856,22 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
         </section>
       </div>
 
-      {/* Bottom Section: Statistics Cards */}
+      {/* Bottom Section: Statistics Cards — only real data */}
       {activeTab === 'profile' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-md w-full">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-md w-full">
           <div className="glass-panel p-md rounded-xl border-2 border-grass-green flex justify-between items-center bg-surface-container-low shadow-[0_0_15px_rgba(16,163,127,0.15)]">
             <div>
-              <span className="text-text-muted text-[10px] font-label-caps uppercase block mb-1">QUESTIONS ASKED</span>
-              <div className="font-stats-num text-stats-num text-xl text-on-surface">1,284</div>
+              <span className="text-text-muted text-[10px] font-label-caps uppercase block mb-1">CHAT SESSIONS</span>
+              <div className="font-stats-num text-stats-num text-xl text-on-surface">{sessionsCount}</div>
             </div>
-            <span className="material-symbols-outlined text-grass-green text-2xl">smart_toy</span>
-          </div>
-          <div className="glass-panel p-md rounded-xl border-2 border-trophy-gold flex justify-between items-center bg-surface-container-low shadow-[0_0_15px_rgba(255,215,0,0.15)]">
-            <div>
-              <span className="text-text-muted text-[10px] font-label-caps uppercase block mb-1">ACCURACY SCORE</span>
-              <div className="font-stats-num text-stats-num text-xl text-on-surface">94.2%</div>
-            </div>
-            <span className="material-symbols-outlined text-trophy-gold text-2xl">trending_up</span>
+            <span className="material-symbols-outlined text-grass-green text-2xl">chat</span>
           </div>
           <div className="glass-panel p-md rounded-xl border-2 border-primary flex justify-between items-center bg-surface-container-low shadow-[0_0_15px_rgba(97,219,180,0.15)]">
             <div>
-              <span className="text-text-muted text-[10px] font-label-caps uppercase block mb-1">LIVE SESSIONS</span>
-              <div className="font-stats-num text-stats-num text-xl text-on-surface">{sessionsCount || 42}</div>
+              <span className="text-text-muted text-[10px] font-label-caps uppercase block mb-1">PLAN</span>
+              <div className="font-stats-num text-stats-num text-xl text-on-surface capitalize">{plan}</div>
             </div>
-            <span className="material-symbols-outlined text-primary text-2xl">sensors</span>
+            <span className="material-symbols-outlined text-primary text-2xl">workspace_premium</span>
           </div>
         </div>
       )}
