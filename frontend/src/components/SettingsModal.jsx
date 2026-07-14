@@ -54,6 +54,12 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
   const langDropdownRef = useRef(null);
 
+  // Password change state
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
+
   useEffect(() => {
     fetchProfile();
     loadSessionsCount();
@@ -168,6 +174,43 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
     } catch (e) {
       console.error(e);
       onShowAlert({ title: 'Error', message: 'Failed to update profile.' });
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword) {
+      onShowAlert({ title: 'Error', message: 'Please fill in all password fields.' });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      onShowAlert({ title: 'Error', message: 'New passwords do not match.' });
+      return;
+    }
+    if (newPassword.length < 8) {
+      onShowAlert({ title: 'Error', message: 'New password must be at least 8 characters.' });
+      return;
+    }
+    setPasswordLoading(true);
+    try {
+      const res = await authenticatedFetch('/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ current_password: currentPassword, new_password: newPassword })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        onShowAlert({ title: 'Success', message: 'Password changed successfully!' });
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+      } else {
+        onShowAlert({ title: 'Error', message: data.detail || 'Failed to change password.' });
+      }
+    } catch (e) {
+      console.error(e);
+      onShowAlert({ title: 'Error', message: 'Error changing password.' });
+    } finally {
+      setPasswordLoading(false);
     }
   };
 
@@ -543,7 +586,9 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
                       <input 
                         className="w-full bg-surface-container border border-outline-variant/30 focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-xl px-md py-3 text-on-surface text-sm" 
                         placeholder="••••••••••••" 
-                        type="password" 
+                        type="password"
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
                       />
                     </div>
                     <div className="space-y-xs">
@@ -551,21 +596,34 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
                       <input 
                         className="w-full bg-surface-container border border-outline-variant/30 focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-xl px-md py-3 text-on-surface text-sm" 
                         placeholder="New Password" 
-                        type="password" 
+                        type="password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
                       />
                     </div>
                   </div>
 
+                  <div className="space-y-xs">
+                    <label className="font-label-caps text-[10px] text-on-surface-variant uppercase ml-1 block">Confirm New Password</label>
+                    <input 
+                      className="w-full bg-surface-container border border-outline-variant/30 focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-xl px-md py-3 text-on-surface text-sm" 
+                      placeholder="Confirm New Password" 
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                    />
+                  </div>
+
+                  <p className="text-[11px] text-text-muted">Password must be 8+ characters with at least one letter, one number, and one special character.</p>
+
                   <div className="flex justify-end pt-sm">
                     <button 
-                      onClick={() => onShowAlert({
-                        title: 'Change Password',
-                        message: 'Password change is not available. Please contact administrator.'
-                      })}
-                      className="px-md py-2 border border-grass-green text-grass-green hover:bg-grass-green hover:text-pitch-dark transition-all rounded-lg text-xs font-bold"
+                      onClick={handleChangePassword}
+                      disabled={passwordLoading}
+                      className="px-md py-2 border border-grass-green text-grass-green hover:bg-grass-green hover:text-pitch-dark transition-all rounded-lg text-xs font-bold disabled:opacity-50"
                       type="button"
                     >
-                      Change Password
+                      {passwordLoading ? 'Changing...' : 'Change Password'}
                     </button>
                   </div>
                 </form>

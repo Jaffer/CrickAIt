@@ -86,6 +86,16 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
   const [loading, setLoading] = useState(false);
   const [agreed, setAgreed] = useState(false);
 
+  // Forgot Password State
+  const [forgotMode, setForgotMode] = useState(null); // null | 'email' | 'otp' | 'new-password'
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotOtp, setForgotOtp] = useState('');
+  const [forgotNewPassword, setForgotNewPassword] = useState('');
+  const [forgotConfirmPassword, setForgotConfirmPassword] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotError, setForgotError] = useState('');
+  const [forgotSuccess, setForgotSuccess] = useState('');
+
   // Mock Chat Stateful Content
   const [mockMessages, setMockMessages] = useState([
     {
@@ -362,6 +372,118 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  // --- Forgot Password Handlers ---
+
+  const handleForgotPasswordRequest = async (e) => {
+    e.preventDefault();
+    setForgotError('');
+    setForgotSuccess('');
+    if (!forgotEmail.trim()) {
+      setForgotError('Please enter your email address');
+      return;
+    }
+    setForgotLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail.trim() })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setForgotError(data.detail || 'Failed to send verification code');
+        return;
+      }
+      setForgotSuccess(data.message || 'A verification code has been sent to your email.');
+      setForgotMode('otp');
+    } catch (err) {
+      setForgotError('Network error. Please try again.');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    setForgotError('');
+    if (!forgotOtp.trim()) {
+      setForgotError('Please enter the verification code');
+      return;
+    }
+    setForgotLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/auth/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail.trim(), otp: forgotOtp.trim() })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setForgotError(data.detail || 'Invalid verification code');
+        return;
+      }
+      setForgotMode('new-password');
+    } catch (err) {
+      setForgotError('Network error. Please try again.');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    setForgotError('');
+    if (!forgotNewPassword) {
+      setForgotError('Please enter a new password');
+      return;
+    }
+    if (forgotNewPassword !== forgotConfirmPassword) {
+      setForgotError('Passwords do not match');
+      return;
+    }
+    if (forgotNewPassword.length < 8) {
+      setForgotError('Password must be at least 8 characters long');
+      return;
+    }
+    setForgotLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: forgotEmail.trim(),
+          otp: forgotOtp.trim(),
+          new_password: forgotNewPassword
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setForgotError(data.detail || 'Failed to reset password');
+        return;
+      }
+      setForgotSuccess('Password reset successfully! You can now sign in.');
+      setForgotMode(null);
+      setForgotEmail('');
+      setForgotOtp('');
+      setForgotNewPassword('');
+      setForgotConfirmPassword('');
+    } catch (err) {
+      setForgotError('Network error. Please try again.');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const resetForgotState = () => {
+    setForgotMode(null);
+    setForgotEmail('');
+    setForgotOtp('');
+    setForgotNewPassword('');
+    setForgotConfirmPassword('');
+    setForgotError('');
+    setForgotSuccess('');
   };
 
   // Mock Chat Simulator
@@ -905,6 +1027,18 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
                 />
               </div>
 
+              {modalMode === 'login' && (
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => { resetForgotState(); setForgotMode('email'); }}
+                    className="text-xs text-grass-green hover:underline font-semibold"
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
+              )}
+
               {/* Invisible Turnstile CAPTCHA */}
               <div
                 className="cf-turnstile"
@@ -998,6 +1132,153 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
           </div>
         </div>
       )}
+      {/* Forgot Password Overlay */}
+      {forgotMode && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-surface-container-low border border-stadium-grey rounded-2xl p-lg w-full max-w-md glass-panel animate-fade-in">
+            <div className="flex items-center gap-sm mb-lg">
+              <button
+                type="button"
+                onClick={resetForgotState}
+                className="p-2 rounded-lg hover:bg-surface-variant transition-colors"
+              >
+                <span className="material-symbols-outlined text-on-surface-variant">arrow_back</span>
+              </button>
+              <h2 className="font-headline-md text-lg text-on-background font-bold">
+                {forgotMode === 'email' && 'Reset Password'}
+                {forgotMode === 'otp' && 'Enter Verification Code'}
+                {forgotMode === 'new-password' && 'Create New Password'}
+              </h2>
+            </div>
+
+            {forgotSuccess && forgotMode === null && (
+              <div className="p-md bg-grass-green/10 border border-grass-green/30 rounded-xl mb-md text-sm text-grass-green text-center">
+                {forgotSuccess}
+              </div>
+            )}
+
+            {forgotError && (
+              <div className="p-md bg-error/10 border border-error/30 rounded-xl mb-md text-sm text-error text-center">
+                {forgotError}
+              </div>
+            )}
+
+            {/* Step 1: Enter Email */}
+            {forgotMode === 'email' && (
+              <form onSubmit={handleForgotPasswordRequest} className="space-y-md">
+                <p className="text-sm text-text-muted">Enter the email address associated with your account and we'll send you a verification code.</p>
+                <div className="space-y-xs">
+                  <label className="font-label-caps text-[10px] text-on-surface-variant uppercase ml-1 block">Email Address</label>
+                  <input
+                    type="email"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    required
+                    className="w-full bg-surface-container border border-outline-variant/30 focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-xl px-md py-3 text-on-surface text-sm"
+                    placeholder="alex@example.com"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full py-3 bg-grass-green text-pitch-dark font-bold rounded-xl hover:shadow-[0_0_20px_rgba(16,163,127,0.4)] transition-all active:scale-95 text-sm"
+                  disabled={forgotLoading}
+                >
+                  {forgotLoading ? 'Sending...' : 'Send Verification Code'}
+                </button>
+              </form>
+            )}
+
+            {/* Step 2: Enter OTP */}
+            {forgotMode === 'otp' && (
+              <form onSubmit={handleVerifyOtp} className="space-y-md">
+                {forgotSuccess && (
+                  <div className="p-md bg-grass-green/10 border border-grass-green/30 rounded-xl text-sm text-grass-green text-center">
+                    {forgotSuccess}
+                  </div>
+                )}
+                <p className="text-sm text-text-muted">We sent a 6-digit code to <strong className="text-on-surface">{forgotEmail}</strong>. The code expires in 10 minutes.</p>
+                <div className="space-y-xs">
+                  <label className="font-label-caps text-[10px] text-on-surface-variant uppercase ml-1 block">Verification Code</label>
+                  <input
+                    type="text"
+                    value={forgotOtp}
+                    onChange={(e) => setForgotOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    required
+                    maxLength={6}
+                    className="w-full bg-surface-container border border-outline-variant/30 focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-xl px-md py-3 text-on-surface text-sm text-center tracking-[0.5em] text-lg font-mono"
+                    placeholder="000000"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full py-3 bg-grass-green text-pitch-dark font-bold rounded-xl hover:shadow-[0_0_20px_rgba(16,163,127,0.4)] transition-all active:scale-95 text-sm"
+                  disabled={forgotLoading}
+                >
+                  {forgotLoading ? 'Verifying...' : 'Verify Code'}
+                </button>
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={handleForgotPasswordRequest}
+                    className="text-xs text-grass-green hover:underline font-semibold"
+                    disabled={forgotLoading}
+                  >
+                    Didn't receive a code? Resend
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Step 3: New Password */}
+            {forgotMode === 'new-password' && (
+              <form onSubmit={handleResetPassword} className="space-y-md">
+                <p className="text-sm text-text-muted">Create a strong new password for your account.</p>
+                <div className="space-y-xs">
+                  <label className="font-label-caps text-[10px] text-on-surface-variant uppercase ml-1 block">New Password</label>
+                  <input
+                    type="password"
+                    value={forgotNewPassword}
+                    onChange={(e) => setForgotNewPassword(e.target.value)}
+                    required
+                    className="w-full bg-surface-container border border-outline-variant/30 focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-xl px-md py-3 text-on-surface text-sm"
+                    placeholder="••••••••"
+                  />
+                </div>
+                <div className="space-y-xs">
+                  <label className="font-label-caps text-[10px] text-on-surface-variant uppercase ml-1 block">Confirm Password</label>
+                  <input
+                    type="password"
+                    value={forgotConfirmPassword}
+                    onChange={(e) => setForgotConfirmPassword(e.target.value)}
+                    required
+                    className="w-full bg-surface-container border border-outline-variant/30 focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-xl px-md py-3 text-on-surface text-sm"
+                    placeholder="••••••••"
+                  />
+                </div>
+                <p className="text-[11px] text-text-muted">Password must be 8+ characters with at least one letter, one number, and one special character.</p>
+                <button
+                  type="submit"
+                  className="w-full py-3 bg-grass-green text-pitch-dark font-bold rounded-xl hover:shadow-[0_0_20px_rgba(16,163,127,0.4)] transition-all active:scale-95 text-sm"
+                  disabled={forgotLoading}
+                >
+                  {forgotLoading ? 'Resetting...' : 'Reset Password'}
+                </button>
+              </form>
+            )}
+
+            <div className="text-center mt-md">
+              <button
+                type="button"
+                onClick={resetForgotState}
+                className="text-xs text-text-muted hover:text-on-surface transition-colors"
+              >
+                Back to Sign In
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showPrivacy && <PrivacyPolicyModal onClose={() => setShowPrivacy(false)} />}
       {showTerms && <TermsOfServiceModal onClose={() => setShowTerms(false)} />}
     </div>

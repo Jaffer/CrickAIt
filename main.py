@@ -9,6 +9,9 @@ import re
 import bs4
 import hashlib
 import secrets
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from typing import Optional, Literal, Annotated
@@ -42,6 +45,11 @@ logger = logging.getLogger("crickait-backend")
 CRICKET_API_KEY = os.getenv("CRICKET_API_KEY", "")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
+SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USER = os.getenv("SMTP_USER", "")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+SMTP_FROM = os.getenv("SMTP_FROM", "CrickAIt <noreply@crickait.com>")
 
 if not GROQ_API_KEY:
     raise RuntimeError("GROQ_API_KEY environment variable is not set")
@@ -315,6 +323,26 @@ class LoginRequest(BaseModel):
 class GoogleLoginRequest(BaseModel):
     email: str
     display_name: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+class VerifyOTPRequest(BaseModel):
+    email: str
+    otp: str
+
+
+class ResetPasswordRequest(BaseModel):
+    email: str
+    otp: str
+    new_password: str
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
 
 
 structured_extractor = fast_router_llm.with_structured_output(
@@ -650,6 +678,63 @@ def verify_password(stored_password: str, provided_password: str) -> bool:
         return False
 
 
+def generate_otp() -> str:
+    """Generate a 6-digit numeric OTP."""
+    return ''.join(secrets.choice('0123456789') for _ in range(6))
+
+
+async def send_otp_email(to_email: str, otp: str, purpose: str = "password reset") -> bool:
+    """Send an OTP email. Returns True on success, False on failure."""
+    if not SMTP_USER or not SMTP_PASSWORD:
+        logger.warning("SMTP not configured — OTP email not sent to %s. OTP is: %s", to_email, otp)
+        return False
+
+    try:
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = f"CrickAIt - Your {purpose.title()} Code"
+        msg['From'] = SMTP_FROM
+        msg['To'] = to_email
+
+        html_body = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 20px;">
+            <div style="text-align: center; margin-bottom: 24px;">
+                <h2 style="color: #10a37f; margin: 0;">CrickAIt</h2>
+            </div>
+            <div style="background: #1a1d24; border-radius: 12px; padding: 32px; text-align: center;">
+                <h3 style="color: #f1f1f1; margin-bottom: 8px;">Your Verification Code</h3>
+                <p style="color: #a0aab2; font-size: 14px; margin-bottom: 24px;">
+                    Use the code below to {purpose}. It expires in 10 minutes.
+                </p>
+                <div style="background: #252932; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+                    <span style="font-size: 32px; font-weight: bold; color: #10a37f; letter-spacing: 8px;">{otp}</span>
+                </div>
+                <p style="color: #a0aab2; font-size: 12px;">
+                    If you didn't request this, you can safely ignore this email.
+                </p>
+            </div>
+            <p style="text-align: center; color: #636e72; font-size: 11px; margin-top: 16px;">
+                © {datetime.now().year} CrickAIt. All rights reserved.
+            </p>
+        </div>
+        """
+
+        text_body = f"CrickAIt — Your {purpose.title()} Code\n\nYour verification code is: {otp}\nIt expires in 10 minutes.\n\nIf you didn't request this, ignore this email."
+
+        msg.attach(MIMEText(text_body, 'plain'))
+        msg.attach(MIMEText(html_body, 'html'))
+
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
+            server.starttls()
+            server.login(SMTP_USER, SMTP_PASSWORD)
+            server.sendmail(SMTP_FROM, to_email, msg.as_string())
+
+        logger.info("OTP email sent to %s for %s", to_email, purpose)
+        return True
+    except Exception as e:
+        logger.error("Failed to send OTP email to %s: %s", to_email, e)
+        return False
+
+
 async def get_current_user(request: Request) -> str:
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
@@ -765,6 +850,23 @@ async def lifespan(app: FastAPI):
             await conn.commit()
     except Exception as e:
         logger.error("Failed to initialize notifications tables: %s", e)
+
+    # Create password_resets table for OTP-based password recovery
+    try:
+        async with aiosqlite.connect("checkpoints.db") as conn:
+            await conn.execute("""
+            CREATE TABLE IF NOT EXISTS password_resets (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT NOT NULL,
+                otp TEXT NOT NULL,
+                expires_at TIMESTAMP NOT NULL,
+                used INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """)
+            await conn.commit()
+    except Exception as e:
+        logger.error("Failed to initialize password_resets table: %s", e)
 
     async with AsyncSqliteSaver.from_conn_string("checkpoints.db") as checkpointer:
         await checkpointer.setup()
@@ -1126,6 +1228,185 @@ async def google_login(request: GoogleLoginRequest):
     token = uuid.uuid4().hex
     await redis_client.setex(f"session:{token}", 86400, username)
     return {"token": token, "username": username, "display_name": display_name}
+
+
+# --- PASSWORD RECOVERY ENDPOINTS ---
+
+@app.post("/auth/forgot-password")
+async def forgot_password(request: ForgotPasswordRequest):
+    """Send an OTP to the user's email for password reset."""
+    email = request.email.strip().lower()
+    if not email or not re.match(r"^[^\s@]+@[^\s@]+\.[^\s@]+$", email):
+        raise HTTPException(status_code=400, detail="Please enter a valid email address")
+
+    try:
+        async with aiosqlite.connect("checkpoints.db") as conn:
+            conn.row_factory = aiosqlite.Row
+            async with conn.execute("SELECT username FROM users WHERE email = ? AND auth_provider = 'local'", (email,)) as c:
+                row = await c.fetchone()
+                if not row:
+                    # Return success even if email not found to prevent enumeration
+                    return {"message": "If an account with that email exists, a verification code has been sent."}
+
+            # Invalidate any previous unused OTPs for this email
+            await conn.execute("UPDATE password_resets SET used = 1 WHERE email = ? AND used = 0", (email,))
+
+            otp = generate_otp()
+            expires_at = (datetime.utcnow() + timedelta(minutes=10)).isoformat()
+            await conn.execute(
+                "INSERT INTO password_resets (email, otp, expires_at) VALUES (?, ?, ?)",
+                (email, otp, expires_at)
+            )
+            await conn.commit()
+
+        sent = await send_otp_email(email, otp, purpose="password reset")
+        if not sent:
+            logger.warning("SMTP not configured — OTP for %s is: %s", email, otp)
+
+    except Exception as e:
+        logger.error("Forgot password error: %s", e)
+        raise HTTPException(status_code=500, detail="An error occurred. Please try again.")
+
+    return {"message": "If an account with that email exists, a verification code has been sent."}
+
+
+@app.post("/auth/verify-otp")
+async def verify_otp(request: VerifyOTPRequest):
+    """Verify the OTP sent to the user's email."""
+    email = request.email.strip().lower()
+    otp = request.otp.strip()
+
+    if not email or not otp:
+        raise HTTPException(status_code=400, detail="Email and OTP are required")
+
+    try:
+        async with aiosqlite.connect("checkpoints.db") as conn:
+            conn.row_factory = aiosqlite.Row
+            async with conn.execute(
+                "SELECT * FROM password_resets WHERE email = ? AND otp = ? AND used = 0 ORDER BY id DESC LIMIT 1",
+                (email, otp)
+            ) as c:
+                row = await c.fetchone()
+                if not row:
+                    raise HTTPException(status_code=400, detail="Invalid or expired verification code")
+
+                expires_at = datetime.fromisoformat(row["expires_at"])
+                if datetime.utcnow() > expires_at:
+                    raise HTTPException(status_code=400, detail="Verification code has expired. Please request a new one.")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Verify OTP error: %s", e)
+        raise HTTPException(status_code=500, detail="An error occurred. Please try again.")
+
+    return {"message": "Verification code is valid", "email": email}
+
+
+@app.post("/auth/reset-password")
+async def reset_password(request: ResetPasswordRequest):
+    """Reset password using verified OTP."""
+    email = request.email.strip().lower()
+    otp = request.otp.strip()
+    new_password = request.new_password
+
+    if not email or not otp or not new_password:
+        raise HTTPException(status_code=400, detail="Email, OTP, and new password are required")
+
+    if len(new_password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters long")
+    if not any(c.isalpha() for c in new_password) or not any(c.isdigit() for c in new_password):
+        raise HTTPException(status_code=400, detail="Password must contain at least one letter and one number")
+    special_chars = set("!@#$%^&*()_+-=[]{}|;':\",./<>?\\~`")
+    if not any(c in special_chars for c in new_password):
+        raise HTTPException(status_code=400, detail="Password must contain at least one special character")
+
+    try:
+        async with aiosqlite.connect("checkpoints.db") as conn:
+            conn.row_factory = aiosqlite.Row
+            async with conn.execute(
+                "SELECT * FROM password_resets WHERE email = ? AND otp = ? AND used = 0 ORDER BY id DESC LIMIT 1",
+                (email, otp)
+            ) as c:
+                row = await c.fetchone()
+                if not row:
+                    raise HTTPException(status_code=400, detail="Invalid or expired verification code")
+
+                expires_at = datetime.fromisoformat(row["expires_at"])
+                if datetime.utcnow() > expires_at:
+                    raise HTTPException(status_code=400, detail="Verification code has expired. Please request a new one.")
+
+            # Mark OTP as used
+            await conn.execute("UPDATE password_resets SET used = 1 WHERE id = ?", (row["id"],))
+
+            # Update password
+            new_hash = hash_password(new_password)
+            await conn.execute("UPDATE users SET password_hash = ? WHERE email = ?", (new_hash, email))
+            await conn.commit()
+
+        # Update Redis cache
+        redis_data = await redis_client.get(f"user:email:{email}")
+        if redis_data:
+            username_str = redis_data.decode('utf-8') if isinstance(redis_data, bytes) else redis_data
+            account_data = await redis_client.get(f"user:account:{username_str}")
+            if account_data:
+                user_data = json.loads(account_data.decode('utf-8') if isinstance(account_data, bytes) else account_data)
+                user_data["password_hash"] = new_hash
+                await redis_client.set(f"user:account:{username_str}", json.dumps(user_data))
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Reset password error: %s", e)
+        raise HTTPException(status_code=500, detail="An error occurred. Please try again.")
+
+    return {"message": "Password has been reset successfully. You can now sign in with your new password."}
+
+
+@app.post("/auth/change-password")
+async def change_password(request: ChangePasswordRequest, username: str = Depends(get_current_user)):
+    """Change password for logged-in users (requires current password)."""
+    if username.startswith('guest_'):
+        raise HTTPException(status_code=400, detail="Guest accounts cannot change password")
+
+    if len(request.new_password) < 8:
+        raise HTTPException(status_code=400, detail="New password must be at least 8 characters long")
+    if not any(c.isalpha() for c in request.new_password) or not any(c.isdigit() for c in request.new_password):
+        raise HTTPException(status_code=400, detail="New password must contain at least one letter and one number")
+    special_chars = set("!@#$%^&*()_+-=[]{}|;':\",./<>?\\~`")
+    if not any(c in special_chars for c in request.new_password):
+        raise HTTPException(status_code=400, detail="New password must contain at least one special character")
+
+    try:
+        async with aiosqlite.connect("checkpoints.db") as conn:
+            conn.row_factory = aiosqlite.Row
+            async with conn.execute("SELECT password_hash, auth_provider FROM users WHERE username = ?", (username,)) as c:
+                row = await c.fetchone()
+                if not row:
+                    raise HTTPException(status_code=404, detail="User not found")
+                if row["auth_provider"] != "local":
+                    raise HTTPException(status_code=400, detail="Password change not available for Google-linked accounts")
+                if not verify_password(row["password_hash"], request.current_password):
+                    raise HTTPException(status_code=400, detail="Current password is incorrect")
+
+            new_hash = hash_password(request.new_password)
+            await conn.execute("UPDATE users SET password_hash = ? WHERE username = ?", (new_hash, username))
+            await conn.commit()
+
+        # Update Redis cache
+        account_data = await redis_client.get(f"user:account:{username}")
+        if account_data:
+            user_data = json.loads(account_data.decode('utf-8') if isinstance(account_data, bytes) else account_data)
+            user_data["password_hash"] = new_hash
+            await redis_client.set(f"user:account:{username}", json.dumps(user_data))
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Change password error: %s", e)
+        raise HTTPException(status_code=500, detail="An error occurred. Please try again.")
+
+    return {"message": "Password changed successfully"}
 
 
 @app.post("/auth/logout")
