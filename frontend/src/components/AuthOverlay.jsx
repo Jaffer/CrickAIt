@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { API_URL } from '../services/api';
 import SettingsModal from './SettingsModal';
 import PrivacyPolicyModal from './PrivacyPolicyModal';
@@ -79,12 +79,54 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
     }
   }, [initialMode]);
 
+  useEffect(() => {
+    let checkInterval;
+    const initTurnstile = () => {
+      if (window.turnstile && turnstileContainerRef.current && !turnstileWidgetRef.current) {
+        try {
+          turnstileWidgetRef.current = window.turnstile.render(turnstileContainerRef.current, {
+            sitekey: '0x4AAAAAAD09r1W2hg2_y0AO',
+            size: 'invisible'
+          });
+          if (checkInterval) clearInterval(checkInterval);
+        } catch (e) {
+          console.error("Turnstile render error:", e);
+        }
+      }
+    };
+
+    initTurnstile();
+
+    if (!window.turnstile) {
+      checkInterval = setInterval(initTurnstile, 500);
+      setTimeout(() => {
+        if (checkInterval) clearInterval(checkInterval);
+      }, 10000);
+    }
+
+    return () => {
+      if (checkInterval) clearInterval(checkInterval);
+      if (window.turnstile && turnstileWidgetRef.current) {
+        try {
+          window.turnstile.remove(turnstileWidgetRef.current);
+          turnstileWidgetRef.current = null;
+        } catch (e) {
+          console.error("Turnstile remove error on unmount:", e);
+        }
+      }
+    };
+  }, [modalMode, isModalOpen]);
+
   // Auth Form State
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [agreed, setAgreed] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showForgotPasswords, setShowForgotPasswords] = useState(false);
+  const turnstileContainerRef = useRef(null);
+  const turnstileWidgetRef = useRef(null);
 
   // Forgot Password State
   const [forgotMode, setForgotMode] = useState(null); // null | 'email' | 'otp' | 'new-password'
@@ -318,6 +360,16 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
     }
   };
 
+  const resetTurnstile = () => {
+    if (window.turnstile) {
+      if (turnstileWidgetRef.current) {
+        window.turnstile.reset(turnstileWidgetRef.current);
+      } else {
+        window.turnstile.reset();
+      }
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (modalMode === 'signup' && !agreed) {
@@ -328,19 +380,39 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
 
     let token = '';
     if (window.turnstile) {
-      token = window.turnstile.getResponse();
-      if (!token) {
-        try {
-          token = await new Promise((resolve, reject) => {
-            window.turnstile.execute('.cf-turnstile', {
-              callback: (t) => resolve(t),
-              'error-callback': (err) => reject(err)
+      if (turnstileWidgetRef.current) {
+        token = window.turnstile.getResponse(turnstileWidgetRef.current);
+        if (!token) {
+          try {
+            token = await new Promise((resolve, reject) => {
+              window.turnstile.execute(turnstileWidgetRef.current, {
+                callback: (t) => resolve(t),
+                'error-callback': (err) => reject(err)
+              });
             });
-          });
-        } catch (err) {
-          alert('Security CAPTCHA verification failed. Please try again.');
-          setLoading(false);
-          return;
+          } catch (err) {
+            console.error("Turnstile execution error:", err);
+            alert('Security CAPTCHA verification failed. Please try again.');
+            setLoading(false);
+            return;
+          }
+        }
+      } else {
+        token = window.turnstile.getResponse();
+        if (!token) {
+          try {
+            token = await new Promise((resolve, reject) => {
+              window.turnstile.execute('.cf-turnstile', {
+                callback: (t) => resolve(t),
+                'error-callback': (err) => reject(err)
+              });
+            });
+          } catch (err) {
+            console.error("Turnstile execution error:", err);
+            alert('Security CAPTCHA verification failed. Please try again.');
+            setLoading(false);
+            return;
+          }
         }
       }
     }
@@ -359,7 +431,7 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
       const data = await res.json();
       if (!res.ok) {
         alert(data.detail || 'Authentication failed');
-        if (window.turnstile) window.turnstile.reset();
+        resetTurnstile();
       } else {
         localStorage.setItem('crickait_token', data.token);
         localStorage.setItem('crickait_username', data.username);
@@ -368,7 +440,7 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
       }
     } catch (err) {
       alert('Network error occurred');
-      if (window.turnstile) window.turnstile.reset();
+      resetTurnstile();
     } finally {
       setLoading(false);
     }
@@ -1018,7 +1090,7 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
               <div className="space-y-xs">
                 <label className="font-label-caps text-[10px] text-on-surface-variant uppercase ml-1 block">Password</label>
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   required
@@ -1027,8 +1099,17 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
                 />
               </div>
 
-              {modalMode === 'login' && (
-                <div className="flex justify-end">
+              <div className="flex items-center justify-between text-xs text-text-muted mt-1 select-none">
+                <label className="flex items-center gap-xs cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showPassword}
+                    onChange={(e) => setShowPassword(e.target.checked)}
+                    className="rounded border-outline-variant bg-surface-container text-grass-green focus:ring-0 focus:ring-offset-0 w-3.5 h-3.5 cursor-pointer"
+                  />
+                  <span>Show password</span>
+                </label>
+                {modalMode === 'login' && (
                   <button
                     type="button"
                     onClick={() => { resetForgotState(); setForgotMode('email'); }}
@@ -1036,11 +1117,12 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
                   >
                     Forgot Password?
                   </button>
-                </div>
-              )}
+                )}
+              </div>
 
               {/* Invisible Turnstile CAPTCHA */}
               <div
+                ref={turnstileContainerRef}
                 className="cf-turnstile"
                 data-sitekey="0x4AAAAAAD09r1W2hg2_y0AO"
                 data-size="invisible"
@@ -1236,7 +1318,7 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
                 <div className="space-y-xs">
                   <label className="font-label-caps text-[10px] text-on-surface-variant uppercase ml-1 block">New Password</label>
                   <input
-                    type="password"
+                    type={showForgotPasswords ? "text" : "password"}
                     value={forgotNewPassword}
                     onChange={(e) => setForgotNewPassword(e.target.value)}
                     required
@@ -1247,13 +1329,24 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
                 <div className="space-y-xs">
                   <label className="font-label-caps text-[10px] text-on-surface-variant uppercase ml-1 block">Confirm Password</label>
                   <input
-                    type="password"
+                    type={showForgotPasswords ? "text" : "password"}
                     value={forgotConfirmPassword}
                     onChange={(e) => setForgotConfirmPassword(e.target.value)}
                     required
                     className="w-full bg-surface-container border border-outline-variant/30 focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-xl px-md py-3 text-on-surface text-sm"
                     placeholder="••••••••"
                   />
+                </div>
+                <div className="flex items-center text-xs text-text-muted mt-1 select-none">
+                  <label className="flex items-center gap-xs cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={showForgotPasswords}
+                      onChange={(e) => setShowForgotPasswords(e.target.checked)}
+                      className="rounded border-outline-variant bg-surface-container text-grass-green focus:ring-0 focus:ring-offset-0 w-3.5 h-3.5 cursor-pointer"
+                    />
+                    <span>Show passwords</span>
+                  </label>
                 </div>
                 <p className="text-[11px] text-text-muted">Password must be 8+ characters with at least one letter, one number, and one special character.</p>
                 <button

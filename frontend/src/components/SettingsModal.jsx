@@ -59,6 +59,7 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordLoading, setPasswordLoading] = useState(false);
+  const [showPasswords, setShowPasswords] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -586,7 +587,7 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
                       <input 
                         className="w-full bg-surface-container border border-outline-variant/30 focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-xl px-md py-3 text-on-surface text-sm" 
                         placeholder="••••••••••••" 
-                        type="password"
+                        type={showPasswords ? "text" : "password"}
                         value={currentPassword}
                         onChange={(e) => setCurrentPassword(e.target.value)}
                       />
@@ -596,7 +597,7 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
                       <input 
                         className="w-full bg-surface-container border border-outline-variant/30 focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-xl px-md py-3 text-on-surface text-sm" 
                         placeholder="New Password" 
-                        type="password"
+                        type={showPasswords ? "text" : "password"}
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
                       />
@@ -608,10 +609,22 @@ export default function SettingsModal({ onClose, onShowAlert, onConfirmAlert, on
                     <input 
                       className="w-full bg-surface-container border border-outline-variant/30 focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-xl px-md py-3 text-on-surface text-sm" 
                       placeholder="Confirm New Password" 
-                      type="password"
+                      type={showPasswords ? "text" : "password"}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                     />
+                  </div>
+
+                  <div className="flex items-center text-xs text-text-muted mt-1 select-none">
+                    <label className="flex items-center gap-xs cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={showPasswords}
+                        onChange={(e) => setShowPasswords(e.target.checked)}
+                        className="rounded border-outline-variant bg-surface-container text-grass-green focus:ring-0 focus:ring-offset-0 w-3.5 h-3.5 cursor-pointer"
+                      />
+                      <span>Show passwords</span>
+                    </label>
                   </div>
 
                   <p className="text-[11px] text-text-muted">Password must be 8+ characters with at least one letter, one number, and one special character.</p>
