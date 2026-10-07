@@ -168,7 +168,7 @@ class LiveScoreService(BaseService):
                 web_search = TavilySearchResults(max_results=3)
                 fast_router_llm = ChatGroq(
                     temperature=0.4,
-                    model_name="llama3-8b-8192",
+                    model_name=settings.GROQ_ROUTER_MODEL,
                     api_key=settings.GROQ_API_KEY
                 )
 

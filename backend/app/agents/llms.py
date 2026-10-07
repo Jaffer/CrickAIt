@@ -5,17 +5,19 @@ from backend.app.agents.tools.historical import get_historical_context
 from backend.app.agents.tools.live_web import fetch_live_web
 from backend.app.agents.tools.cricapi_tool import fetch_player_and_live_matches
 
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+from backend.app.config.settings import settings
+
+GROQ_API_KEY = settings.GROQ_API_KEY or os.environ.get("GROQ_API_KEY", "")
 
 fast_router_llm = ChatGroq(
     temperature=0.0,
-    model_name="llama3-8b-8192",
+    model_name=settings.GROQ_ROUTER_MODEL,
     api_key=GROQ_API_KEY
 )
 
 expert_llm = ChatGroq(
     temperature=0.0,
-    model_name="llama3-70b-8192",
+    model_name=settings.GROQ_EXPERT_MODEL,
     api_key=GROQ_API_KEY
 )
 

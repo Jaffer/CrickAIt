@@ -15,6 +15,8 @@ class Settings:
     SMTP_FROM: str = os.getenv("SMTP_FROM", "CrickAIt <noreply@crickait.com>")
     TURNSTILE_SECRET_KEY: str = os.getenv("TURNSTILE_SECRET_KEY", "")
     DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/crickait")
+    GROQ_ROUTER_MODEL: str = os.getenv("GROQ_ROUTER_MODEL", "qwen/qwen3.8-27b")
+    GROQ_EXPERT_MODEL: str = os.getenv("GROQ_EXPERT_MODEL", "qwen/qwen3.8-27b")
 settings = Settings()
 
 if not settings.GROQ_API_KEY:
