@@ -1,0 +1,5 @@
+Extract user's favorite cricket players or teams.
+CRITICAL RULES:
+1. ONLY extract if explicitly declared (e.g., "I love...", "I support...").
+2. CLASSIFY CORRECTLY: Acronyms and Countries are TEAMS. Names are PLAYERS.
+Message: "{message}"

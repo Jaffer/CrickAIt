@@ -6,7 +6,7 @@ import SettingsModal from './components/SettingsModal';
 import HelpModal from './components/HelpModal';
 import BugReportModal from './components/BugReportModal';
 import AdminModal from './components/AdminModal';
-import ScorecardOverlay from './components/ScorecardOverlay';
+import MatchIntelligenceCenter from './components/MatchIntelligenceCenter';
 import CustomAlert from './components/CustomAlert';
 import ErrorOverlay from './components/ErrorOverlay';
 import { getAuthToken, authenticatedFetch } from './services/api';
@@ -25,7 +25,7 @@ function App() {
   const [selectedMatchId, setSelectedMatchId] = useState(null);
   const [customAlert, setCustomAlert] = useState(null);
   const [errorOverlay, setErrorOverlay] = useState(null);
-  const [authMode, setAuthMode] = useState('login');
+  const [authMode, setAuthMode] = useState('hidden');
 
   useEffect(() => {
     // Apply saved theme
@@ -173,31 +173,34 @@ function App() {
 
   return (
     <>
-      {/* Unauthenticated: show landing page */}
-      {!isAuthenticated && (
+      {/* Auth Modal for Guests triggering signup */}
+      {!isAuthenticated && (authMode === 'signup' || authMode === 'login') && authMode !== 'hidden' && (
         <AuthOverlay
           initialMode={authMode}
           onLogin={() => {
             setIsAuthenticated(true);
-            setAuthMode('login');
+            setAuthMode('hidden');
+            // Restore state implicitly because AppLayout was never unmounted!
           }}
+          onClose={() => setAuthMode('hidden')}
+          isInlineModal={true}
         />
       )}
 
-      {/* Authenticated: show new navbar layout + chat */}
-      {isAuthenticated && (
-        <AppLayout
-          userProfile={userProfile}
-          onLogout={handleLogout}
-          showSimpleAlert={showSimpleAlert}
-          showConfirmAlert={showConfirmAlert}
-          currentSessionId={currentSessionId}
-          setCurrentSessionId={setCurrentSessionId}
-          setActiveModal={setActiveModal}
-          setErrorOverlay={setErrorOverlay}
-          setSelectedMatchId={setSelectedMatchId}
-        />
-      )}
+      <AppLayout
+        isAuthenticated={isAuthenticated}
+        userProfile={userProfile}
+        onLogout={handleLogout}
+        showSimpleAlert={showSimpleAlert}
+        showConfirmAlert={showConfirmAlert}
+        currentSessionId={currentSessionId}
+        setCurrentSessionId={setCurrentSessionId}
+        setActiveModal={setActiveModal}
+        setErrorOverlay={setErrorOverlay}
+        setSelectedMatchId={setSelectedMatchId}
+        onSignupTrigger={() => setAuthMode('signup')}
+      />
+
 
       {/* Global Modals (rendered on top of authenticated layout) */}
       {isAuthenticated && (activeModal === 'profile' || activeModal === 'upgrade' || activeModal === 'personalization' || activeModal === 'settings') && (
@@ -235,10 +238,20 @@ function App() {
         />
       )}
 
-      {isAuthenticated && selectedMatchId && (
-        <ScorecardOverlay
+      {selectedMatchId && (
+        <MatchIntelligenceCenter
+          isAuthenticated={isAuthenticated}
           matchId={selectedMatchId}
           onClose={() => setSelectedMatchId(null)}
+          currentSessionId={currentSessionId}
+          setCurrentSessionId={setCurrentSessionId}
+          showSimpleAlert={showSimpleAlert}
+          setErrorOverlay={setErrorOverlay}
+          onLogout={handleLogout}
+          onLoginSuccess={() => {
+            setIsAuthenticated(true);
+            setAuthMode('login');
+          }}
         />
       )}
 

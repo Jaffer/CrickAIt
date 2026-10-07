@@ -4,6 +4,8 @@ import DOMPurify from 'dompurify';
 import { marked } from 'marked';
 
 export default function ChatInterface({
+  isAuthenticated,
+  onSignupTrigger,
   currentSessionId,
   setCurrentSessionId,
   toggleSidebar,
@@ -153,19 +155,19 @@ export default function ChatInterface({
             <div className="logo-container"><img src="/favicon.png" alt="Logo" /></div>
             <h1>How can I help you with cricket today?</h1>
             <div className="suggestion-cards">
-              <div className="card" onClick={() => handleSend('Show me the current IPL points table')}>
+              <div className="card" onClick={() => { if(!isAuthenticated) onSignupTrigger(); else handleSend('Show me the current IPL points table'); }}>
                 <div className="card-icon"><i className="fa-solid fa-table-list"></i></div>
                 <div className="card-text">Show me the current IPL points table</div>
               </div>
-              <div className="card" onClick={() => handleSend('What is the latest cricket news?')}>
+              <div className="card" onClick={() => { if(!isAuthenticated) onSignupTrigger(); else handleSend('What is the latest cricket news?'); }}>
                 <div className="card-icon"><i className="fa-solid fa-newspaper"></i></div>
                 <div className="card-text">What is the latest cricket news?</div>
               </div>
-              <div className="card" onClick={() => handleSend('Show me live match scores')}>
+              <div className="card" onClick={() => { if(!isAuthenticated) onSignupTrigger(); else handleSend('Show me live match scores'); }}>
                 <div className="card-icon"><i className="fa-solid fa-satellite-dish"></i></div>
                 <div className="card-text">Show me live match scores</div>
               </div>
-              <div className="card" onClick={() => handleSend('Give me stats for Virat Kohli')}>
+              <div className="card" onClick={() => { if(!isAuthenticated) onSignupTrigger(); else handleSend('Give me stats for Virat Kohli'); }}>
                 <div className="card-icon"><i className="fa-solid fa-chart-simple"></i></div>
                 <div className="card-text">Give me stats for Virat Kohli</div>
               </div>
@@ -213,11 +215,18 @@ export default function ChatInterface({
         <form className="flex items-center gap-sm relative w-full" onSubmit={(e) => { e.preventDefault(); handleSend(); }}>
           <input 
             className="w-full bg-surface-container border border-outline-variant focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-full px-md py-sm text-on-surface placeholder:text-on-surface-variant/50 pr-12 text-sm" 
-            placeholder="Ask CrickAlt anything..." 
+            placeholder={isAuthenticated ? "Ask CrickAlt anything..." : "Join the conversation to ask AI..."} 
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={loading}
+            readOnly={!isAuthenticated}
+            onClick={(e) => {
+              if (!isAuthenticated) {
+                e.preventDefault();
+                onSignupTrigger();
+              }
+            }}
           />
           <button 
             className="absolute right-2 top-1/2 -translate-y-1/2 p-xs bg-grass-green text-pitch-dark rounded-full hover:scale-105 transition-transform flex items-center justify-center w-8 h-8" 

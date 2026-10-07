@@ -12,7 +12,7 @@ sleep 5
 
 # 2. Start the FastAPI Backend in the background
 echo "⚙️ Starting FastAPI LangGraph Backend..."
-uvicorn main:app --reload --port 8000 &
+uvicorn backend.app.main:app --reload --port 8000 &
 BACKEND_PID=$!
 
 # Wait 3 seconds to ensure the API is fully running
@@ -20,7 +20,7 @@ sleep 3
 
 # 3. Start the Streamlit Frontend
 echo "🎨 Starting Streamlit User Interface..."
-streamlit run frontend.py
+streamlit run backend/app/legacy/frontend_streamlit.py
 
 # 4. Cleanup Routine
 trap "echo 'Shutting down backend...'; kill $BACKEND_PID; exit" INT TERM EXIT

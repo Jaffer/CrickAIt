@@ -1,6 +1,7 @@
 .env
-checkpoints.db*
-checkpoints.sqlite
+**/checkpoints.db*
+**/test_checkpoints.db*
+**/checkpoints.sqlite
 server.log
 __pycache__/
 *.pyc

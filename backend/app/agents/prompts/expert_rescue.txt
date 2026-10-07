@@ -1,0 +1,4 @@
+The user asked: '{user_question}'. History:
+{recent_history}
+
+Write response based ONLY on history. Use tables if requested.
