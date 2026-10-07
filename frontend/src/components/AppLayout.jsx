@@ -26,6 +26,7 @@ function timeAgo(isoString) {
 }
 
 export default function AppLayout({
+  isAuthenticated,
   userProfile,
   onLogout,
   showSimpleAlert,
@@ -35,6 +36,7 @@ export default function AppLayout({
   setActiveModal,
   setErrorOverlay,
   setSelectedMatchId,
+  onSignupTrigger
 }) {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notifDropdownOpen, setNotifDropdownOpen]     = useState(false);
@@ -370,6 +372,8 @@ export default function AppLayout({
       {/* Main Content — stretches ChatInterface using flex flex-col */}
       <main className="flex-1 min-h-0 overflow-hidden flex flex-col">
         <ChatInterface
+          isAuthenticated={isAuthenticated}
+          onSignupTrigger={onSignupTrigger}
           currentSessionId={currentSessionId}
           setCurrentSessionId={setCurrentSessionId}
           toggleSidebar={() => {}}

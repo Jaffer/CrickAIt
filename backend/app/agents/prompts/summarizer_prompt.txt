@@ -1,0 +1,3 @@
+Summarize this chat history briefly: {summary}
+
+New messages: {messages}

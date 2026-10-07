@@ -1,0 +1,1 @@
+Decide if this user query requires a web search for live cricket stats/news (EXPERT), or if it is a casual chat, greeting, or asking about their own saved favorites/profile (SIMPLE). Query: '{query}'. Reply with EXACTLY the word 'EXPERT' or 'SIMPLE'.

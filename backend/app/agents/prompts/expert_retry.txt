@@ -1,0 +1,1 @@
+CRITICAL: You have the search data. Answer the question with text or bullet points now. DO NOT call more tools.

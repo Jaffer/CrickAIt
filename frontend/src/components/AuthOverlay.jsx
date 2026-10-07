@@ -64,7 +64,7 @@ const getTeamFlag = (teamName) => {
   return null;
 };
 
-export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
+export default function AuthOverlay({ onLogin, initialMode = 'login', onClose, isInlineModal = false }) {
   const [isModalOpen, setIsModalOpen] = useState(initialMode === 'signup');
   const [modalMode, setModalMode] = useState(initialMode);
   const [showSettings, setShowSettings] = useState(false);
@@ -605,6 +605,211 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
     setShowSettings(false);
   };
 
+  if (isInlineModal) {
+    return (
+      <>
+        {/* Authentication Overlay Modal */}
+        {isModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-md bg-pitch-dark/85 backdrop-blur-md animate-fade-in">
+            <div className="relative w-full max-w-md bg-surface-container-low border border-stadium-grey rounded-2xl shadow-2xl p-lg flex flex-col animate-float-in">
+              {/* Close Button */}
+              <button
+                className="absolute top-4 right-4 text-text-muted hover:text-on-background text-2xl transition-colors font-semibold"
+                onClick={() => { setIsModalOpen(false); if (onClose) onClose(); }}
+                aria-label="Close modal"
+              >
+                &times;
+              </button>
+  
+              <div className="flex items-center gap-xs justify-center mb-md">
+                <img src="/favicon.png" alt="CrickAlt" className="w-8 h-8 rounded-lg" />
+                <span className="text-xl font-headline-md font-extrabold text-grass-green">CrickAlt</span>
+              </div>
+  
+              {/* Modal Heading */}
+              <h2 className="text-center font-headline-md text-lg text-on-background mb-lg">
+                {modalMode === 'login' ? 'Sign In to CrickAlt' : 'Create an Account'}
+              </h2>
+  
+              {/* Tabs */}
+              <div className="flex border-b border-outline-variant/30 mb-md">
+                <button
+                  onClick={() => setModalMode('login')}
+                  className={`flex-1 pb-2 font-semibold text-sm transition-all border-b-2 ${modalMode === 'login' ? 'border-grass-green text-grass-green' : 'border-transparent text-text-muted'}`}
+                >
+                  Sign In
+                </button>
+                <button
+                  onClick={() => setModalMode('signup')}
+                  className={`flex-1 pb-2 font-semibold text-sm transition-all border-b-2 ${modalMode === 'signup' ? 'border-grass-green text-grass-green' : 'border-transparent text-text-muted'}`}
+                >
+                  Sign Up
+                </button>
+              </div>
+  
+              {/* Auth Form */}
+              <form onSubmit={handleSubmit} className="space-y-md">
+                {modalMode === 'signup' && (
+                  <div className="space-y-xs">
+                    <label className="font-label-caps text-[10px] text-on-surface-variant uppercase ml-1 block">Username</label>
+                    <input
+                      type="text"
+                      value={username}
+                      onChange={e => setUsername(e.target.value)}
+                      required
+                      className="w-full bg-surface-container border border-outline-variant/30 focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-xl px-md py-3 text-on-surface placeholder:text-on-surface-variant/50 text-sm"
+                      placeholder="Enter your username"
+                    />
+                  </div>
+                )}
+  
+                <div className="space-y-xs">
+                  <label className="font-label-caps text-[10px] text-on-surface-variant uppercase ml-1 block">
+                    {modalMode === 'login' ? 'Email or Username' : 'Email Address'}
+                  </label>
+                  <input
+                    type="text"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    required
+                    className="w-full bg-surface-container border border-outline-variant/30 focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-xl px-md py-3 text-on-surface placeholder:text-on-surface-variant/50 text-sm"
+                    placeholder={modalMode === 'login' ? 'alex_richardson' : 'alex@example.com'}
+                  />
+                </div>
+  
+                <div className="space-y-xs">
+                  <label className="font-label-caps text-[10px] text-on-surface-variant uppercase ml-1 block">Password</label>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    required
+                    className="w-full bg-surface-container border border-outline-variant/30 focus:border-grass-green focus:ring-1 focus:ring-grass-green rounded-xl px-md py-3 text-on-surface placeholder:text-on-surface-variant/50 text-sm"
+                    placeholder="••••••••"
+                  />
+                </div>
+  
+                <div className="flex items-center justify-between text-xs text-text-muted mt-1 select-none">
+                  <label className="flex items-center gap-xs cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={showPassword}
+                      onChange={(e) => setShowPassword(e.target.checked)}
+                      className="rounded border-outline-variant bg-surface-container text-grass-green focus:ring-0 focus:ring-offset-0 w-3.5 h-3.5 cursor-pointer"
+                    />
+                    <span>Show password</span>
+                  </label>
+                  {modalMode === 'login' && (
+                    <button
+                      type="button"
+                      onClick={() => { resetForgotState(); setForgotMode('email'); }}
+                      className="text-xs text-grass-green hover:underline font-semibold"
+                    >
+                      Forgot Password?
+                    </button>
+                  )}
+                </div>
+  
+                {/* Invisible Turnstile CAPTCHA */}
+                <div
+                  ref={turnstileContainerRef}
+                  className="cf-turnstile"
+                  data-sitekey="0x4AAAAAAD09r1W2hg2_y0AO"
+                  data-size="invisible"
+                ></div>
+  
+                {modalMode === 'signup' && (
+                  <div className="flex items-start gap-xs text-xs text-on-surface-variant my-md select-none">
+                    <input
+                      type="checkbox"
+                      id="agree-checkbox"
+                      checked={agreed}
+                      onChange={(e) => setAgreed(e.target.checked)}
+                      required
+                      className="mt-0.5 rounded border-outline-variant bg-surface-container text-grass-green focus:ring-0 focus:ring-offset-0 w-4 h-4 cursor-pointer"
+                    />
+                    <label htmlFor="agree-checkbox" className="cursor-pointer text-text-muted">
+                      I agree to the{' '}
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setShowTerms(true); }}
+                        className="text-grass-green hover:underline font-bold"
+                      >
+                        User Terms / Agreement (ToS)
+                      </button>
+                    </label>
+                  </div>
+                )}
+  
+                <button
+                  type="submit"
+                  className="w-full py-3 bg-grass-green text-pitch-dark font-bold rounded-xl hover:shadow-[0_0_20px_rgba(16,163,127,0.4)] transition-all active:scale-95 text-sm"
+                  disabled={loading}
+                >
+                  {loading ? 'Processing...' : (modalMode === 'login' ? 'Sign In' : 'Sign Up')}
+                </button>
+              </form>
+  
+              <div className="flex items-center gap-xs my-md text-text-muted">
+                <hr className="flex-1 border-outline-variant/30" />
+                <span className="font-label-caps text-[10px]">OR</span>
+                <hr className="flex-1 border-outline-variant/30" />
+              </div>
+  
+              {/* Google Login Button */}
+              <button 
+                type="button"
+                onClick={handleCustomGoogleLogin}
+                className="w-full py-3 bg-white hover:bg-neutral-100 text-neutral-800 font-semibold rounded-xl flex items-center justify-center gap-sm mb-sm transition-all text-sm border border-neutral-300"
+              >
+                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" className="w-5 h-5" />
+                Continue with Google
+              </button>
+  
+              {/* Guest Action */}
+              <button
+                type="button"
+                className="w-full py-3 bg-surface-variant hover:bg-surface-container-high text-on-surface font-semibold rounded-xl transition-all duration-150 text-sm"
+                onClick={handleGuestLogin}
+              >
+                Continue as Guest
+              </button>
+  
+              {/* Toggle Sign In / Sign Up Link */}
+              <div className="text-center mt-md text-xs text-text-muted">
+                {modalMode === 'login' ? (
+                  <p>
+                    Don't have an account?{' '}
+                    <button
+                      type="button"
+                      onClick={() => setModalMode('signup')}
+                      className="text-grass-green hover:underline font-bold"
+                    >
+                      Sign Up
+                    </button>
+                  </p>
+                ) : (
+                  <p>
+                    Already have an account?{' '}
+                    <button
+                      type="button"
+                      onClick={() => setModalMode('login')}
+                      className="text-grass-green hover:underline font-bold"
+                    >
+                      Sign In
+                    </button>
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        {showPrivacy && <PrivacyPolicyModal onClose={() => setShowPrivacy(false)} />}
+        {showTerms && <TermsOfServiceModal onClose={() => setShowTerms(false)} />}
+      </>
+    );
+  }
+
   return (
     <div className="bg-background text-on-background font-body-md selection:bg-grass-green selection:text-pitch-dark min-h-screen overflow-x-hidden pb-16 md:pb-0">
       {/* Top Header */}
@@ -1025,7 +1230,7 @@ export default function AuthOverlay({ onLogin, initialMode = 'login' }) {
             {/* Close Button */}
             <button
               className="absolute top-4 right-4 text-text-muted hover:text-on-background text-2xl transition-colors font-semibold"
-              onClick={() => setIsModalOpen(false)}
+              onClick={() => { setIsModalOpen(false); if (onClose) onClose(); }}
               aria-label="Close modal"
             >
               &times;
