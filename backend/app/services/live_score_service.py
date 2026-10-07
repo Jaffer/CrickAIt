@@ -4,8 +4,8 @@ from backend.app.core.base_service import BaseService
 from backend.app.providers.cricapi_provider import CricAPIProvider
 from backend.app.providers.cricbuzz_provider import CricbuzzProvider
 from backend.app.providers.rss_provider import RSSProvider
-from langchain_community.tools.tavily_search import TavilySearchResults
-from langchain_groq import ChatGroq
+from langchain_community.tools.tavily_search import TavilySearchResults  # type: ignore
+from langchain_groq import ChatGroq  # type: ignore
 from backend.app.config.settings import settings
 
 class LiveScoreService(BaseService):

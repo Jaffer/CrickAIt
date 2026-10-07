@@ -1,8 +1,9 @@
 import os
-from dotenv import load_dotenv
-
-# Ensure dotenv values are loaded first
-load_dotenv()
+try:
+    from dotenv import load_dotenv  # type: ignore
+    load_dotenv()
+except ImportError:
+    pass
 
 class Settings:
     CRICKET_API_KEY: str = os.getenv("CRICKET_API_KEY", "")

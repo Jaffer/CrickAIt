@@ -1,5 +1,5 @@
 import os
-from langchain_groq import ChatGroq
+from langchain_groq import ChatGroq  # type: ignore
 from backend.app.schemas.profile_schemas import UserProfileExtraction
 from backend.app.agents.tools.historical import get_historical_context
 from backend.app.agents.tools.live_web import fetch_live_web
