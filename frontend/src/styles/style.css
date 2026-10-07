@@ -103,7 +103,11 @@ body {
 }
 
 .sidebar.rail-collapsed {
-    width: 56px;
+    width: 56px !important;
+    min-width: 56px !important;
+    max-width: 56px !important;
+    overflow: visible !important;
+    border-right: 1px solid var(--border-color) !important;
 }
 
 .sidebar.closed {
@@ -847,10 +851,11 @@ body {
     }
     .sidebar.closed,
     .sidebar.rail-collapsed {
-        transform: translateX(-100%);
-        width: 280px;
+        transform: translateX(-100%) !important;
+        width: 280px !important;
+        min-width: 280px !important;
         box-shadow: none;
-        border-right: none;
+        border-right: none !important;
     }
     .toggle-sidebar-open {
         display: block;

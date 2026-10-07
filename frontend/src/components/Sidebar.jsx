@@ -252,7 +252,7 @@ export default function Sidebar({
   };
 
   return (
-    <nav className={`sidebar ${isOpen ? '' : 'rail-collapsed closed'}`}>
+    <nav className={`sidebar ${isOpen ? '' : 'rail-collapsed'}`}>
       {!isOpen ? (
         /* ── Collapsed Slim Rail (ChatGPT Style) ── */
         <div className="flex flex-col items-center justify-between h-full py-3 px-1 w-full select-none">
@@ -262,10 +262,16 @@ export default function Sidebar({
             <button
               onClick={() => setIsOpen(true)}
               className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-surface-container-high text-on-surface-variant hover:text-grass-green transition-colors group relative"
-              title="Expand sidebar"
-              aria-label="Expand sidebar"
+              title="Open sidebar"
+              aria-label="Open sidebar"
             >
-              <img src="/favicon.png" alt="CrickAIt" className="w-7 h-7 rounded-lg group-hover:scale-105 transition-transform" />
+              <img src="/favicon.png" alt="CrickAIt" className="w-6 h-6 rounded-md group-hover:hidden transition-transform" />
+              <span className="material-symbols-outlined text-[20px] hidden group-hover:block text-grass-green">
+                dock_to_right
+              </span>
+              <span className="pointer-events-none absolute left-full ml-3 px-2 py-1 text-[11px] font-medium text-white bg-surface-container-highest border border-outline-variant/30 rounded-md whitespace-nowrap shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-50">
+                Open sidebar
+              </span>
             </button>
 
             {/* New Chat Icon Button */}
@@ -275,30 +281,36 @@ export default function Sidebar({
                 const input = document.getElementById('chat-input');
                 if (input) input.focus();
               }}
-              className="w-10 h-10 rounded-xl flex items-center justify-center text-on-surface-variant hover:text-grass-green hover:bg-surface-container-high transition-colors"
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-on-surface-variant hover:text-grass-green hover:bg-surface-container-high transition-colors group relative"
               title="New chat"
               aria-label="New chat"
             >
               <span className="material-symbols-outlined text-[20px]">edit_square</span>
+              <span className="pointer-events-none absolute left-full ml-3 px-2 py-1 text-[11px] font-medium text-white bg-surface-container-highest border border-outline-variant/30 rounded-md whitespace-nowrap shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-50">
+                New chat
+              </span>
             </button>
 
             {/* Search Chats Icon Button */}
             <button
               onClick={() => {
                 setIsOpen(true);
-                setTimeout(() => searchInputRef.current?.focus(), 200);
+                setTimeout(() => searchInputRef.current?.focus(), 150);
               }}
-              className="w-10 h-10 rounded-xl flex items-center justify-center text-on-surface-variant hover:text-grass-green hover:bg-surface-container-high transition-colors"
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-on-surface-variant hover:text-grass-green hover:bg-surface-container-high transition-colors group relative"
               title="Search chats"
               aria-label="Search chats"
             >
               <span className="material-symbols-outlined text-[20px]">search</span>
+              <span className="pointer-events-none absolute left-full ml-3 px-2 py-1 text-[11px] font-medium text-white bg-surface-container-highest border border-outline-variant/30 rounded-md whitespace-nowrap shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-50">
+                Search chats
+              </span>
             </button>
 
             {/* Pinned Chats Icon Button */}
             <button
               onClick={() => setIsOpen(true)}
-              className="w-10 h-10 rounded-xl flex items-center justify-center text-on-surface-variant hover:text-trophy-gold hover:bg-surface-container-high transition-colors relative"
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-on-surface-variant hover:text-trophy-gold hover:bg-surface-container-high transition-colors relative group"
               title="Pinned chats"
               aria-label="Pinned chats"
             >
@@ -306,16 +318,35 @@ export default function Sidebar({
               {pinnedSessionIds.length > 0 && (
                 <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-trophy-gold" />
               )}
+              <span className="pointer-events-none absolute left-full ml-3 px-2 py-1 text-[11px] font-medium text-white bg-surface-container-highest border border-outline-variant/30 rounded-md whitespace-nowrap shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-50">
+                Pinned chats
+              </span>
             </button>
 
             {/* Recent Chats Icon Button */}
             <button
               onClick={() => setIsOpen(true)}
-              className="w-10 h-10 rounded-xl flex items-center justify-center text-on-surface-variant hover:text-grass-green hover:bg-surface-container-high transition-colors"
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-on-surface-variant hover:text-grass-green hover:bg-surface-container-high transition-colors group relative"
               title="Recent chats"
               aria-label="Recent chats"
             >
               <span className="material-symbols-outlined text-[20px]">chat_bubble_outline</span>
+              <span className="pointer-events-none absolute left-full ml-3 px-2 py-1 text-[11px] font-medium text-white bg-surface-container-highest border border-outline-variant/30 rounded-md whitespace-nowrap shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-50">
+                Recent chats
+              </span>
+            </button>
+
+            {/* Live Matches Icon Button */}
+            <button
+              onClick={() => setIsOpen(true)}
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-on-surface-variant hover:text-grass-green hover:bg-surface-container-high transition-colors group relative"
+              title="Live matches"
+              aria-label="Live matches"
+            >
+              <span className="material-symbols-outlined text-[20px]">sports_cricket</span>
+              <span className="pointer-events-none absolute left-full ml-3 px-2 py-1 text-[11px] font-medium text-white bg-surface-container-highest border border-outline-variant/30 rounded-md whitespace-nowrap shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-50">
+                Live matches
+              </span>
             </button>
           </div>
 
@@ -323,14 +354,18 @@ export default function Sidebar({
           <div className="flex flex-col items-center gap-2 w-full">
             <button
               onClick={(e) => { e.stopPropagation(); onTogglePopover(); }}
-              className="w-8 h-8 rounded-full flex items-center justify-center bg-grass-green/20 border border-grass-green/30 text-grass-green text-xs font-bold hover:ring-2 hover:ring-grass-green/50 transition-all overflow-hidden"
+              className="w-8 h-8 rounded-full flex items-center justify-center bg-grass-green/20 border border-grass-green/30 text-grass-green text-xs font-bold hover:ring-2 hover:ring-grass-green/50 transition-all overflow-hidden group relative"
               title={userProfile?.displayName || userProfile?.username || 'User Profile'}
+              aria-label="User profile"
             >
               {userProfile?.avatar ? (
                 <img src={userProfile.avatar} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
                 userInitials
               )}
+              <span className="pointer-events-none absolute left-full ml-3 px-2 py-1 text-[11px] font-medium text-white bg-surface-container-highest border border-outline-variant/30 rounded-md whitespace-nowrap shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-50">
+                {userProfile?.displayName || userProfile?.username || 'Profile'}
+              </span>
             </button>
           </div>
         </div>

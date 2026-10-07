@@ -134,8 +134,13 @@ export default function ChatInterface({
   return (
     <main className="main-chat">
       <header className="chat-header">
-        <button className="icon-btn toggle-sidebar-open" onClick={toggleSidebar}>
-          <i className="fa-solid fa-window-restore"></i>
+        <button
+          className="icon-btn toggle-sidebar-open"
+          onClick={toggleSidebar}
+          title="Toggle sidebar"
+          aria-label="Toggle sidebar"
+        >
+          <span className="material-symbols-outlined text-[20px]">dock_to_right</span>
         </button>
         <div className="header-title">{chatTitle}</div>
       </header>

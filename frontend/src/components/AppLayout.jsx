@@ -107,6 +107,18 @@ export default function AppLayout({
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
 
+  // ── Keyboard shortcut to toggle sidebar (ChatGPT-style Ctrl+Shift+S) ──
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        setSidebarOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const handleSearch = (e) => {
     e.preventDefault();
     const q = searchValue.trim();
@@ -137,16 +149,17 @@ export default function AppLayout({
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-stadium-grey shadow-sm flex-shrink-0">
         <nav className="flex justify-between items-center w-full px-lg py-sm max-w-container-max mx-auto">
 
-          {/* Brand Logo & Mobile Sidebar Trigger */}
+          {/* Brand Logo & Sidebar Trigger */}
           <div className="flex items-center gap-xs">
+            {/* Show toggle button when sidebar is collapsed (or on mobile) */}
             <button
               onClick={() => setSidebarOpen((prev) => !prev)}
-              className="md:hidden p-1.5 rounded-lg text-on-surface-variant hover:text-grass-green hover:bg-surface-container-high transition-all flex items-center justify-center mr-1"
-              title="Toggle chat history"
-              aria-label="Toggle chat history"
+              className={`${sidebarOpen ? 'md:hidden' : 'flex'} p-1.5 rounded-lg text-on-surface-variant hover:text-grass-green hover:bg-surface-container-high transition-all items-center justify-center mr-1`}
+              title={sidebarOpen ? "Close sidebar" : "Open sidebar (Ctrl+Shift+S)"}
+              aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
             >
-              <span className="material-symbols-outlined text-[24px]">
-                menu
+              <span className="material-symbols-outlined text-[22px]">
+                {sidebarOpen ? 'dock_to_left' : 'dock_to_right'}
               </span>
             </button>
             <div
