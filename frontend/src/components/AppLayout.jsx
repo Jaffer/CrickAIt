@@ -137,16 +137,16 @@ export default function AppLayout({
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-stadium-grey shadow-sm flex-shrink-0">
         <nav className="flex justify-between items-center w-full px-lg py-sm max-w-container-max mx-auto">
 
-          {/* Sidebar Toggle + Brand Logo */}
+          {/* Brand Logo & Mobile Sidebar Trigger */}
           <div className="flex items-center gap-xs">
             <button
               onClick={() => setSidebarOpen((prev) => !prev)}
-              className="p-1.5 rounded-lg text-on-surface-variant hover:text-grass-green hover:bg-surface-container-high transition-all flex items-center justify-center mr-1"
-              title={sidebarOpen ? "Close chat history" : "Open chat history"}
+              className="md:hidden p-1.5 rounded-lg text-on-surface-variant hover:text-grass-green hover:bg-surface-container-high transition-all flex items-center justify-center mr-1"
+              title="Toggle chat history"
               aria-label="Toggle chat history"
             >
               <span className="material-symbols-outlined text-[24px]">
-                {sidebarOpen ? 'dock_to_left' : 'menu'}
+                menu
               </span>
             </button>
             <div
@@ -157,14 +157,6 @@ export default function AppLayout({
               <img alt="CrickAIt Logo" className="w-9 h-9 rounded-lg shadow-lg" src="/favicon.png" />
               <span className="text-headline-md font-headline-md font-extrabold text-grass-green tracking-tight">CrickAIt</span>
             </div>
-            <button
-              onClick={() => setCurrentSessionId(null)}
-              className="hidden sm:inline-flex items-center gap-1 ml-2 px-2.5 py-1 text-xs font-semibold rounded-lg bg-surface-container hover:bg-surface-container-high border border-outline-variant/30 text-on-surface hover:text-grass-green transition-all"
-              title="Start a new chat"
-            >
-              <span className="material-symbols-outlined text-sm text-grass-green">add</span>
-              <span>New Chat</span>
-            </button>
           </div>
 
           {/* Desktop Nav Links */}

@@ -102,6 +102,10 @@ body {
     height: 100%;
 }
 
+.sidebar.rail-collapsed {
+    width: 56px;
+}
+
 .sidebar.closed {
     width: 0;
     border-right: none;
@@ -837,10 +841,16 @@ body {
         height: 100%;
         z-index: 50;
         box-shadow: 4px 0 24px rgba(0, 0, 0, 0.6);
+        width: 280px;
+        transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        transform: translateX(0);
     }
-    .sidebar.closed {
-        width: 0;
+    .sidebar.closed,
+    .sidebar.rail-collapsed {
+        transform: translateX(-100%);
+        width: 280px;
         box-shadow: none;
+        border-right: none;
     }
     .toggle-sidebar-open {
         display: block;
