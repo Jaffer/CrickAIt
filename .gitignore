@@ -6,7 +6,7 @@ server.log
 __pycache__/
 *.pyc
 venv/
-venv/
+.venv/
 /scratch/
 node_modules/
 .npm-cache/
