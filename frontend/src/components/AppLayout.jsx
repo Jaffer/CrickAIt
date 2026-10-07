@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import ChatInterface from './ChatInterface';
+import Sidebar from './Sidebar';
 import NewsTicker from './NewsTicker';
 import LiveMatches from './LiveMatches';
 import { authenticatedFetch } from '../services/api';
@@ -38,6 +39,7 @@ export default function AppLayout({
   setSelectedMatchId,
   onSignupTrigger
 }) {
+  const [sidebarOpen, setSidebarOpen]                 = useState(window.innerWidth > 768);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notifDropdownOpen, setNotifDropdownOpen]     = useState(false);
   const [liveScoresOpen, setLiveScoresOpen]           = useState(false);
@@ -135,10 +137,34 @@ export default function AppLayout({
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-stadium-grey shadow-sm flex-shrink-0">
         <nav className="flex justify-between items-center w-full px-lg py-sm max-w-container-max mx-auto">
 
-          {/* Logo */}
-          <div className="flex items-center gap-sm">
-            <img alt="CrickAlt Logo" className="w-10 h-10 rounded-lg shadow-lg" src="/favicon.png" />
-            <span className="text-headline-md font-headline-md font-extrabold text-grass-green">CrickAlt</span>
+          {/* Sidebar Toggle + Brand Logo */}
+          <div className="flex items-center gap-xs">
+            <button
+              onClick={() => setSidebarOpen((prev) => !prev)}
+              className="p-1.5 rounded-lg text-on-surface-variant hover:text-grass-green hover:bg-surface-container-high transition-all flex items-center justify-center mr-1"
+              title={sidebarOpen ? "Close chat history" : "Open chat history"}
+              aria-label="Toggle chat history"
+            >
+              <span className="material-symbols-outlined text-[24px]">
+                {sidebarOpen ? 'dock_to_left' : 'menu'}
+              </span>
+            </button>
+            <div
+              className="flex items-center gap-sm cursor-pointer select-none"
+              onClick={() => setCurrentSessionId(null)}
+              title="CrickAIt Home / New Chat"
+            >
+              <img alt="CrickAIt Logo" className="w-9 h-9 rounded-lg shadow-lg" src="/favicon.png" />
+              <span className="text-headline-md font-headline-md font-extrabold text-grass-green tracking-tight">CrickAIt</span>
+            </div>
+            <button
+              onClick={() => setCurrentSessionId(null)}
+              className="hidden sm:inline-flex items-center gap-1 ml-2 px-2.5 py-1 text-xs font-semibold rounded-lg bg-surface-container hover:bg-surface-container-high border border-outline-variant/30 text-on-surface hover:text-grass-green transition-all"
+              title="Start a new chat"
+            >
+              <span className="material-symbols-outlined text-sm text-grass-green">add</span>
+              <span>New Chat</span>
+            </button>
           </div>
 
           {/* Desktop Nav Links */}
@@ -369,19 +395,46 @@ export default function AppLayout({
         </nav>
       </header>
 
-      {/* Main Content — stretches ChatInterface using flex flex-col */}
-      <main className="flex-1 min-h-0 overflow-hidden flex flex-col">
-        <ChatInterface
-          isAuthenticated={isAuthenticated}
-          onSignupTrigger={onSignupTrigger}
+      {/* Main Content Area with Collapsible Sidebar & Chat */}
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-row relative">
+        {/* Mobile backdrop overlay when sidebar is open */}
+        {sidebarOpen && (
+          <div
+            className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-30 transition-opacity"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
+        <Sidebar
+          isOpen={sidebarOpen}
+          setIsOpen={setSidebarOpen}
           currentSessionId={currentSessionId}
           setCurrentSessionId={setCurrentSessionId}
-          toggleSidebar={() => {}}
-          onShowAlert={showSimpleAlert}
-          onShowError={(type) => setErrorOverlay(type)}
+          userProfile={userProfile}
           onLogout={onLogout}
+          onSignup={onSignupTrigger}
+          onTogglePopover={() => setActiveModal('profile')}
+          onOpenModal={(modal) => setActiveModal(modal)}
+          onSelectMatch={(matchId) => setSelectedMatchId(matchId)}
+          onConfirmAlert={showConfirmAlert}
+          onShowAlert={showSimpleAlert}
+          popoverOpen={false}
+          setPopoverOpen={() => {}}
         />
-      </main>
+
+        <main className="flex-1 min-h-0 overflow-hidden flex flex-col relative bg-background">
+          <ChatInterface
+            isAuthenticated={isAuthenticated}
+            onSignupTrigger={onSignupTrigger}
+            currentSessionId={currentSessionId}
+            setCurrentSessionId={setCurrentSessionId}
+            toggleSidebar={() => setSidebarOpen((prev) => !prev)}
+            onShowAlert={showSimpleAlert}
+            onShowError={(type) => setErrorOverlay(type)}
+            onLogout={onLogout}
+          />
+        </main>
+      </div>
 
       {/* Mobile Live Matches Drawer/Overlay */}
       {liveScoresOpen && (

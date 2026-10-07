@@ -30,6 +30,12 @@ export default function Sidebar({
   }, []);
 
   useEffect(() => {
+    if (isOpen) {
+      loadSessions();
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
     const handleClickOutside = () => setActiveDropdownSid(null);
     window.addEventListener('click', handleClickOutside);
     return () => window.removeEventListener('click', handleClickOutside);
@@ -37,23 +43,30 @@ export default function Sidebar({
 
   const loadSessions = async () => {
     try {
-      const [sessionsRes, namesRes] = await Promise.all([
+      const [sessionsRes, namesRes] = await Promise.allSettled([
         authenticatedFetch('/sessions'),
         authenticatedFetch('/session-names')
       ]);
-      if (sessionsRes.ok && namesRes.ok) {
-        const sessionsData = await sessionsRes.json();
-        const namesData = await namesRes.json();
 
-        const s = (sessionsData.sessions || []).map(id => ({
-          id,
-          name: namesData[id] || `Chat ${id.substring(0, 4)}`
-        })).reverse();
+      let sessionIds = [];
+      let namesMap = {};
 
-        setSessions(s);
+      if (sessionsRes.status === 'fulfilled' && sessionsRes.value.ok) {
+        const data = await sessionsRes.value.json();
+        sessionIds = data.sessions || [];
       }
+      if (namesRes.status === 'fulfilled' && namesRes.value.ok) {
+        namesMap = await namesRes.value.json();
+      }
+
+      const s = sessionIds.map(id => ({
+        id,
+        name: namesMap[id] || `Chat ${id.substring(0, 8)}`
+      })).reverse();
+
+      setSessions(s);
     } catch (e) {
-      console.error(e);
+      console.error('Failed to load chat history:', e);
     }
   };
 
@@ -121,55 +134,93 @@ export default function Sidebar({
   return (
     <nav className={`sidebar ${isOpen ? '' : 'closed'}`}>
       <div className="sidebar-header">
-        <button className="new-chat-btn" onClick={() => setCurrentSessionId(null)}>
-          <img src="/favicon.png" alt="logo" className="btn-logo" /> New chat
+        <button
+          className="new-chat-btn"
+          onClick={() => {
+            setCurrentSessionId(null);
+            if (window.innerWidth <= 768) setIsOpen(false);
+          }}
+          title="Start a new chat"
+        >
+          <span className="material-symbols-outlined text-[18px] text-grass-green">add</span>
+          <span>New chat</span>
         </button>
         <div className="sidebar-actions">
-          <button className="icon-btn" onClick={() => setIsOpen(false)}>
-            <i className="fa-solid fa-window-restore"></i>
+          <button
+            className="icon-btn"
+            onClick={() => setIsOpen(false)}
+            title="Close sidebar"
+            aria-label="Close sidebar"
+          >
+            <span className="material-symbols-outlined text-[20px]">dock_to_left</span>
           </button>
         </div>
       </div>
 
       <div className="sidebar-content">
-        <div className="chat-list">
-          {sessions.map(s => (
-            <div
-              key={s.id}
-              className={`chat-item ${s.id === currentSessionId ? 'active' : ''}`}
-              onClick={() => {
-                setCurrentSessionId(s.id);
-                if (window.innerWidth <= 768) setIsOpen(false);
-              }}
-            >
-              <div className="chat-item-text">🏏 {s.name}</div>
-              <div className="chat-item-actions">
-                <div className={`dropdown ${activeDropdownSid === s.id ? 'show' : ''}`}>
-                  <button
-                    className="icon-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setActiveDropdownSid(activeDropdownSid === s.id ? null : s.id);
-                    }}
-                    title="Options"
-                  >
-                    <i className="fa-solid fa-ellipsis"></i>
-                  </button>
-                  {activeDropdownSid === s.id && (
-                    <div className="dropdown-content" style={{ display: 'block' }}>
-                      <button onClick={(e) => handleRenameSession(s.id, s.name, e)}>
-                        <i className="fa-solid fa-pen" style={{ width: '16px' }}></i> Rename
-                      </button>
-                      <button onClick={(e) => handleDeleteSession(s.id, e)} style={{ color: '#ff4b4b' }}>
-                        <i className="fa-regular fa-trash-can" style={{ width: '16px' }}></i> Delete
-                      </button>
-                    </div>
-                  )}
+        <div className="section-title flex items-center justify-between">
+          <span>Recent Chats</span>
+          {sessions.length > 0 && (
+            <span className="text-[11px] text-on-surface-variant font-medium">
+              {sessions.length}
+            </span>
+          )}
+        </div>
+
+        {sessions.length === 0 ? (
+          <div className="py-8 px-3 text-center text-xs text-on-surface-variant flex flex-col items-center gap-2">
+            <span className="material-symbols-outlined text-2xl text-on-surface-variant/40">chat_bubble_outline</span>
+            <p>No chat history yet</p>
+            <p className="text-[10px] text-on-surface-variant/50">Start a new conversation to see it here</p>
+          </div>
+        ) : (
+          <div className="chat-list">
+            {sessions.map(s => (
+              <div
+                key={s.id}
+                className={`chat-item ${s.id === currentSessionId ? 'active' : ''}`}
+                onClick={() => {
+                  setCurrentSessionId(s.id);
+                  if (window.innerWidth <= 768) setIsOpen(false);
+                }}
+                title={s.name}
+              >
+                <div className="chat-item-text flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[16px] text-grass-green flex-shrink-0">
+                    chat
+                  </span>
+                  <span className="truncate">{s.name}</span>
+                </div>
+                <div className="chat-item-actions">
+                  <div className={`dropdown ${activeDropdownSid === s.id ? 'show' : ''}`}>
+                    <button
+                      className="icon-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveDropdownSid(activeDropdownSid === s.id ? null : s.id);
+                      }}
+                      title="Chat options"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">more_horiz</span>
+                    </button>
+                    {activeDropdownSid === s.id && (
+                      <div className="dropdown-content" style={{ display: 'block' }}>
+                        <button onClick={(e) => handleRenameSession(s.id, s.name, e)}>
+                          <span className="material-symbols-outlined text-[14px] mr-1.5 align-middle">edit</span>
+                          Rename
+                        </button>
+                        <button onClick={(e) => handleDeleteSession(s.id, e)} style={{ color: '#ff4b4b' }}>
+                          <span className="material-symbols-outlined text-[14px] mr-1.5 align-middle">delete</span>
+                          Delete
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         {/* Live Matches Sidebar Section */}
         <LiveMatches onSelectMatch={onSelectMatch} />
