@@ -9,7 +9,10 @@ class DatabaseProvider:
     @classmethod
     async def initialize(cls):
         if cls._pool is None:
-            cls._pool = await asyncpg.create_pool(settings.DATABASE_URL)
+            db_url = settings.DATABASE_URL
+            if db_url.startswith("postgres://"):
+                db_url = db_url.replace("postgres://", "postgresql://", 1)
+            cls._pool = await asyncpg.create_pool(db_url)
 
     @classmethod
     async def close(cls):
@@ -17,9 +20,10 @@ class DatabaseProvider:
             await cls._pool.close()
             cls._pool = None
 
+    @classmethod
     @asynccontextmanager
-    async def get_db(self) -> AsyncGenerator[asyncpg.Connection, None]:
-        if self._pool is None:
+    async def get_db(cls) -> AsyncGenerator[asyncpg.Connection, None]:
+        if cls._pool is None:
             raise RuntimeError("Database pool not initialized")
-        async with self._pool.acquire() as conn:
+        async with cls._pool.acquire() as conn:
             yield conn

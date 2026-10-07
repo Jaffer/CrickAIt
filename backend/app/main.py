@@ -182,6 +182,7 @@ class AutoRenameRequest(BaseModel):
 
 from backend.app.agents.llms import fast_router_llm
 from backend.app.agents.graph import build_graph
+from backend.app.agents.tools.live_web import web_search
 
 # 4. AUTH & USER HELPERS
 
@@ -276,14 +277,18 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error("Failed to initialize password_resets table: %s", e)
 
-    checkpointer = AsyncPostgresSaver(DatabaseProvider._pool)
-    await checkpointer.setup()
-    agent = build_graph().compile(checkpointer=checkpointer)
-    
-    yield
-    
-    # Teardown
-    await DatabaseProvider.close()
+    db_url = settings.DATABASE_URL
+    if db_url.startswith("postgres://"):
+        db_url = db_url.replace("postgres://", "postgresql://", 1)
+
+    async with AsyncPostgresSaver.from_conn_string(db_url) as checkpointer:
+        await checkpointer.setup()
+        agent = build_graph().compile(checkpointer=checkpointer)
+        
+        yield
+        
+        # Teardown
+        await DatabaseProvider.close()
 
 app = FastAPI(
     title="CrickAIt Backend API",
@@ -425,10 +430,13 @@ async def clear_history(session_id: str, username: str = Depends(get_current_use
     scoped_sid = f"{username}:{session_id}"
     try:
         async with DatabaseProvider.get_db() as conn:
-            await conn.execute("DELETE FROM checkpoints WHERE thread_id = $1", scoped_sid)
-            await conn.execute("DELETE FROM writes WHERE thread_id = $1", scoped_sid)
+            for tbl in ["checkpoints", "checkpoint_writes", "checkpoint_blobs", "writes"]:
+                try:
+                    await conn.execute(f"DELETE FROM {tbl} WHERE thread_id = $1", scoped_sid)
+                except Exception:
+                    pass
     except Exception as e:
-        logger.error("Failed to clear history from SQLite: %s", e, exc_info=True)
+        logger.error("Failed to clear history: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to clear history")
     return {"status": "success"}
 
